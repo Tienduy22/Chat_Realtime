@@ -1,0 +1,34 @@
+const jwt = require("jsonwebtoken");
+require("dotenv").config();
+
+const generateAccessToken = (payload) => {
+    return jwt.sign(payload, process.env.JWT_SECRET, {
+        expiresIn: process.env.JWT_EXPIRE || "7d",
+    });
+};
+
+const generateRefreshToken = (payload) => {
+    return jwt.sign(payload, process.env.JWT_REFRESH_SECRET, {
+        expiresIn: process.env.JWT_REFRESH_EXPIRE || "30d",
+    });
+};
+
+const verifyAccessToken = (token) => {
+    return jwt.verify(token, process.env.JWT_SECRET);
+};
+
+const verifyRefreshToken = (token) => {
+    return jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+};
+
+const decode = (token) => {
+    return jwt.decode(token);
+};
+
+module.exports = {
+    generateAccessToken,
+    generateRefreshToken,
+    verifyAccessToken,
+    verifyRefreshToken,
+    decode,
+};
