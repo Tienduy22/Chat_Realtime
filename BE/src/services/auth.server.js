@@ -1,6 +1,10 @@
 const userRepository = require("../repositories/user.reponsitory");
 const bcrypt = require("bcrypt");
-const { generateAccessToken, generateRefreshToken } = require("../utils/jwt");
+const {
+    generateAccessToken,
+    generateRefreshToken,
+    verifyRefreshToken,
+} = require("../utils/jwt");
 const { sequelize } = require("../models");
 
 const register = async (registerData) => {
@@ -121,7 +125,85 @@ const login = async (loginData) => {
     };
 };
 
+const refreshToken = async (refresh_token) => {
+    try {
+        const decode = verifyRefreshToken(refresh_token);
+        const user = await userRepository.findById(decode.user_id);
+        if (!user || !user.is_active) {
+            throw {
+                statusCode: 401,
+                message: "Token không hợp lệ",
+            };
+        }
+
+        const new_access_token = generateAccessToken({
+            user_id: user.user_id,
+            email: user.email,
+            username: user.username,
+        });
+
+        const new_refresh_token = generateRefreshToken({
+            user_id: user.user_id,
+        });
+
+        return {
+            tokens: {
+                access_token: new_access_token,
+                refresh_token: new_refresh_token,
+            },
+        };
+    } catch (error) {
+        throw {
+            statusCode: 401,
+            message: "Token không hợp lệ hoặc đã hết hạn",
+        };
+    }
+};
+
+const profile = async (user_id) => {
+    try {
+        const user = await userRepository.findByIdWithSettings(user_id);
+        if (!user) {
+            throw {
+                statusCode: 401,
+                message: "User không tồn tại",
+            };
+        }
+
+        return {
+            user: {
+                user_id: user.user_id,
+                username: user.username,
+                email: user.email,
+                full_name: user.full_name,
+                avatar_url: user.avatar_url,
+                phone: user.phone,
+                bio: user.bio,
+                status: user.status,
+                last_seen: user.last_seen,
+                settings: user.settings,
+            },
+        };
+    } catch (error) {
+        throw error;
+    }
+};
+
+const logout = async (user_id) => {
+    try {
+        await userRepository.updateStatus(user_id, "offline");
+        return {
+            message: "Đăng xuất thành công",
+        };
+    } catch (error) {
+        throw error;
+    }
+};
+
 module.exports = {
     register,
     login,
+    refreshToken,
+    profile,
+    logout
 };

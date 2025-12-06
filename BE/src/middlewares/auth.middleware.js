@@ -1,5 +1,5 @@
-const { verifyAccessToken } = require("../utils/jwt");
 const userRepository = require("../repositories/user.reponsitory");
+const { verifyAccessToken } = require("../utils/jwt");
 
 const authenticate = async (req, res, next) => {
     try {

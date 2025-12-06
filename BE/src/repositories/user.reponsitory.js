@@ -1,3 +1,4 @@
+const { Model } = require("sequelize");
 const {User, UserSetting} = require("../models")
 
 const create = async (userData, transaction) => {
@@ -29,6 +30,15 @@ const findByEmail = async (email) => {
     }
 }
 
+const findById = async (user_id) => {
+    try {
+        const user =  await User.findByPk(user_id)
+        return user
+    } catch (error) {
+        throw error
+    }
+}
+
 const findByName = async (username) => {
     try {
         const user =  await User.findOne({
@@ -38,6 +48,21 @@ const findByName = async (username) => {
         })
 
         return user
+    } catch (error) {
+        throw error
+    }
+}
+
+const findByIdWithSettings = async (user_id) => {
+    try {
+        return await User.findByPk(user_id, {
+            include: [
+                {
+                    model: UserSetting,
+                    as: "settings"
+                }
+            ]
+        })
     } catch (error) {
         throw error
     }
@@ -67,10 +92,22 @@ const updateLastSeen = async (user_id) => {
     }
 }
 
+const updateStatus = async (user_id, status) => {
+    try {
+        return await update(user_id, {
+            status: status
+        })
+    } catch (error) {
+        throw error
+    }
+}
 module.exports = {
     create,
     findByEmail,
     findByName,
+    findById,
+    findByIdWithSettings,
     update,
-    updateLastSeen
+    updateLastSeen,
+    updateStatus,
 }
