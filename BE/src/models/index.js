@@ -82,12 +82,12 @@ User.hasMany(MessageMention, { foreignKey: 'mentioned_user_id', as: 'mentions' }
 MessageMention.belongsTo(User, { foreignKey: 'mentioned_user_id', as: 'mentionedUser' });
 
 // User - BlockedUser (blocker)
-User.hasMany(BlockedUser, { foreignKey: 'blocker_user_id', as: 'blockedUsers' });
+User.hasMany(BlockedUser, { foreignKey: 'blocker_user_id', as: 'blockerBy' });
 BlockedUser.belongsTo(User, { foreignKey: 'blocker_user_id', as: 'blocker' });
 
 // User - BlockedUser (blocked)
 User.hasMany(BlockedUser, { foreignKey: 'blocked_user_id', as: 'blockedBy' });
-BlockedUser.belongsTo(User, { foreignKey: 'blocked_user_id', as: 'blockedUser' });
+BlockedUser.belongsTo(User, { foreignKey: 'blocked_user_id', as: 'blocked' });
 
 module.exports = {
   sequelize,
