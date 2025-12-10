@@ -1,8 +1,8 @@
-const contactServer = require('../services/contact.server')
+const contactService = require('../services/contact.service')
 
 const sendInvitations = async (req, res, next) => {
     try {
-        const result = await contactServer.sendInvitations(req.body);
+        const result = await contactService.sendInvitations(req.body);
 
         return res.status(201).json({
             success: true,
@@ -16,7 +16,7 @@ const sendInvitations = async (req, res, next) => {
 
 const acceptInvitations = async (req, res, next) => {
     try {
-        const result = await contactServer.acceptInvitations(req.body);
+        const result = await contactService.acceptInvitations(req.body);
 
         return res.status(201).json({
             success: true,
@@ -30,7 +30,7 @@ const acceptInvitations = async (req, res, next) => {
 
 const rejectInvitations = async (req, res, next) => {
     try {
-        const result = await contactServer.rejectInvitations(req.body);
+        const result = await contactService.rejectInvitations(req.body);
 
         return res.status(201).json({
             success: true,
@@ -44,7 +44,7 @@ const rejectInvitations = async (req, res, next) => {
 
 const listFriends = async (req, res, next) => {
     try {
-        const result = await contactServer.listFriends(req.body);
+        const result = await contactService.listFriends(req.body);
 
         return res.status(201).json({
             success: true,
@@ -58,7 +58,7 @@ const listFriends = async (req, res, next) => {
 
 const blockFriend = async (req, res, next) => {
     try {
-        const result = await contactServer.blockFriend(req.body);
+        const result = await contactService.blockFriend(req.body);
 
         return res.status(201).json({
             success: true,
@@ -72,7 +72,7 @@ const blockFriend = async (req, res, next) => {
 
 const unBlockFriend = async (req, res, next) => {
     try {
-        const result = await contactServer.unBlockFriend(req.body);
+        const result = await contactService.unBlockFriend(req.body);
 
         return res.status(201).json({
             success: true,
@@ -86,7 +86,7 @@ const unBlockFriend = async (req, res, next) => {
 
 const listBlocked = async (req, res, next) => {
     try {
-        const result = await contactServer.listBlocked(req.body);
+        const result = await contactService.listBlocked(req.body);
 
         return res.status(201).json({
             success: true,

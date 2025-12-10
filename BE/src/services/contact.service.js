@@ -2,6 +2,7 @@ const contactReponsitory = require("../repositories/contact.reponsitory");
 const notificationReponsitory = require("../repositories/notification.reponsitory");
 const userRepossitory = require("../repositories/user.reponsitory");
 const blockedUserReponsitory = require("../repositories/blockedUser.reponsitory");
+const conversationReponsitory = require("../repositories/conversation.reponsitory")
 
 const sendInvitations = async ({ user_id, contact_user_id }) => {
     try {
@@ -17,10 +18,10 @@ const sendInvitations = async ({ user_id, contact_user_id }) => {
             throw { statusCode: 404, message: "User không tồn tại" };
         }
 
-        const existingContact = await contactReponsitory.findOne({
+        const existingContact = await contactReponsitory.findByUserIdAndContactUserId(
             user_id,
             contact_user_id,
-        });
+        );
 
         if (existingContact) {
             if (existingContact.status === "pending") {
@@ -151,6 +152,8 @@ const acceptInvitations = async ({ user_id, contact_user_id }) => {
                 }
             );
         }
+
+        await conversationReponsitory.createNewConversation(user_id, contact_user_id)
 
         return contactRespond;
     } catch (error) {

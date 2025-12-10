@@ -1,8 +1,8 @@
-const userServer = require('../services/user.server')
+const userService = require('../services/user.service')
 
 const searchUser = async (req, res, next) => {
     try {
-        const result = await userServer.searchUser(req.query.keyword);
+        const result = await userService.searchUser(req.query.keyword);
 
         return res.status(201).json({
             success: true,
@@ -16,7 +16,7 @@ const searchUser = async (req, res, next) => {
 
 const updateProfile = async (req, res, next) => {
     try {
-        const result = await userServer.updateProfile(req.params.user_id ,req.body, req.uploadedImageUrls);
+        const result = await userService.updateProfile(req.params.user_id ,req.body, req.uploadedImageUrls);
 
         return res.status(201).json({
             success: true,
