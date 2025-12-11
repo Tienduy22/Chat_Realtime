@@ -1,4 +1,5 @@
 const { User, BlockedUser } = require("../models");
+const { Op } = require("sequelize");
 
 const blockFriend = async (user_id, friend_id) => {
     try {
@@ -38,6 +39,21 @@ const findBlock = async (user_id, friend_id) => {
     }
 };
 
+const findBlockAll = async (user_id, friend_ids) => {
+    try {
+        const blocks = await BlockedUser.findAll({
+            where: {
+                blocker_user_id: user_id,
+                blocked_user_id: {[Op.in]: friend_ids},
+            },
+        });
+
+        return blocks;
+    } catch (error) {
+        throw error;
+    }
+};
+
 const listBlocked = async (user_id) => {
     try {
         const listBlocked = await BlockedUser.findAll({
@@ -64,5 +80,6 @@ module.exports = {
     blockFriend,
     unBlockFriend,
     findBlock,
+    findBlockAll,
     listBlocked,
 };

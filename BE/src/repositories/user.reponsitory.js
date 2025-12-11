@@ -19,6 +19,7 @@ const findByEmail = async (email) => {
         const user = await User.findOne({
             where: {
                 email: email,
+                is_active: true
             },
         });
 
@@ -36,6 +37,21 @@ const findById = async (user_id) => {
         throw error;
     }
 };
+
+const findAll = async (user_ids) => {
+    try {
+        const users = await User.findAll({
+            where: {
+                user_id: {[Op.in]: user_ids},
+                is_active: true
+            }
+        })
+
+        return users
+    } catch (error) {
+        throw error
+    }
+}
 
 const findByName = async (username) => {
     try {
@@ -121,6 +137,7 @@ module.exports = {
     create,
     findByEmail,
     findByName,
+    findAll,
     findById,
     searchUser,
     findByIdWithSettings,

@@ -1,3 +1,4 @@
+const { where } = require("sequelize");
 const {
     User,
     Conversation,
@@ -102,7 +103,79 @@ const createNewGroupConversation = async (
     }
 };
 
+const addMember = async (conversation_id, member_id) => {
+    try {
+        const member = await ConversationParticipant.create({
+            conversation_id: conversation_id,
+            user_id: member_id,
+            role: "member",
+        });
+
+        return member;
+    } catch (error) {
+        throw error;
+    }
+};
+
+const findById = async (conversation_id) => {
+    try {
+        const conversation = await Conversation.findByPk(conversation_id);
+
+        return conversation;
+    } catch (error) {
+        throw error;
+    }
+};
+
+const findMemberOfGroup = async (conversation_id, member_id) => {
+    try {
+        const memberOfGroup = await ConversationParticipant.findOne({
+            where: {
+                conversation_id: conversation_id,
+                user_id: member_id,
+            },
+        });
+
+        return memberOfGroup;
+    } catch (error) {
+        throw error;
+    }
+};
+
+const deleteMember = async (conversation_id, member_id) => {
+    try {
+        return await ConversationParticipant.destroy({
+            where: {
+                conversation_id: conversation_id,
+                user_id: member_id,
+            },
+        });
+    } catch (error) {
+        throw error;
+    }
+};
+
+const updateRoleParticipant = async (role, participant_id) => {
+    const [affectedRows] = await ConversationParticipant.update(
+        { role: role },
+        {
+            where: { participant_id },
+        }
+    );
+
+    if (affectedRows === 0) {
+        throw new Error("Participant không tồn tại hoặc không có thay đổi");
+    }
+
+    return { success: true };
+};
+
 module.exports = {
     createNewConversation,
     createNewGroupConversation,
+    addMember,
+    findById,
+    findMemberOfGroup,
+    deleteMember,
+    updateRoleParticipant,
 };
