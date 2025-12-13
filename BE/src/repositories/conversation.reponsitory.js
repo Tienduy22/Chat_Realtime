@@ -142,6 +142,20 @@ const findMemberOfGroup = async (conversation_id, member_id) => {
     }
 };
 
+const findAllMemberOfGroup = async (conversation_id) => {
+    try {
+        const memberOfGroup = await ConversationParticipant.findAll({
+            where: {
+                conversation_id: conversation_id,
+            },
+        });
+
+        return memberOfGroup;
+    } catch (error) {
+        throw error;
+    }
+};
+
 const deleteMember = async (conversation_id, member_id) => {
     try {
         return await ConversationParticipant.destroy({
@@ -229,6 +243,7 @@ module.exports = {
     createNewGroupConversation,
     addMember,
     findById,
+    findAllMemberOfGroup,
     findMemberOfGroup,
     deleteMember,
     updateRoleParticipant,

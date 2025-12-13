@@ -25,7 +25,7 @@ const Message = sequelize.define(
                 "audio",
                 "file",
                 "location",
-                "system"
+                "system",
             ),
             defaultValue: "text",
         },

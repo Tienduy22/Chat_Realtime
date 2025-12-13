@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "cross-env NODE_ENV=development nodemon --watch src --exec babel-node server.js",
+    "dev": "cross-env NODE_ENV=development nodemon --inspect --watch src --exec babel-node server.js",
     "db:sync": "node scripts/syncDatabase.js",
     "db:seed": "node scripts/seedData.js",
     "db:reset": "node scripts/resetDatabase.js",
