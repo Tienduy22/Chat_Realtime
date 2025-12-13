@@ -51,6 +51,43 @@ const memberSchema = Joi.object({
     }),
 });
 
+const changeNameSchema = Joi.object({
+    conversation_id: Joi.number().integer().positive().required().messages({
+        "number.base": "Conversation ID phải là số",
+        "number.integer": "Conversation ID phải là số nguyên",
+        "number.positive": "Conversation ID phải là số dương",
+        "any.required": "Conversation ID là bắt buộc",
+    }),
+
+    admin_id: Joi.number().integer().positive().required().messages({
+        "number.base": "Admin ID phải là số",
+        "number.integer": "Admin ID phải là số nguyên",
+        "number.positive": "Admin ID phải là số dương",
+        "any.required": "Admin ID là bắt buộc",
+    }),
+
+    name: Joi.string().required().messages({
+        "string.base": "name phải là string",
+        "any.required": "Member ID là bắt buộc",
+    }),
+});
+
+const changeAvatarSchema = Joi.object({
+    conversation_id: Joi.number().integer().positive().required().messages({
+        "number.base": "Conversation ID phải là số",
+        "number.integer": "Conversation ID phải là số nguyên",
+        "number.positive": "Conversation ID phải là số dương",
+        "any.required": "Conversation ID là bắt buộc",
+    }),
+
+    admin_id: Joi.number().integer().positive().required().messages({
+        "number.base": "Admin ID phải là số",
+        "number.integer": "Admin ID phải là số nguyên",
+        "number.positive": "Admin ID phải là số dương",
+        "any.required": "Admin ID là bắt buộc",
+    }),
+});
+
 const memberLeaveSchema = Joi.object({
     conversation_id: Joi.number().integer().positive().required().messages({
         "number.base": "Conversation ID phải là số",
@@ -96,5 +133,7 @@ module.exports = {
     groupConversationSchema,
     memberSchema,
     memberLeaveSchema,
+    changeNameSchema,
+    changeAvatarSchema,
     validate,
 };

@@ -159,7 +159,9 @@ const updateRoleParticipant = async (role, participant_id) => {
     const [affectedRows] = await ConversationParticipant.update(
         { role: role },
         {
-            where: { participant_id },
+            where: {
+                participant_id: participant_id,
+            },
         }
     );
 
@@ -170,6 +172,58 @@ const updateRoleParticipant = async (role, participant_id) => {
     return { success: true };
 };
 
+const changeName = async (conversation_id, name) => {
+    try {
+        return await Conversation.update(
+            {
+                name: name,
+            },
+            {
+                where: {
+                    conversation_id: conversation_id,
+                },
+            }
+        );
+    } catch (error) {
+        throw error;
+    }
+};
+
+const changeAvatar = async (conversation_id, avatar_url) => {
+    try {
+        return await Conversation.update(
+            {
+                avatar_url: avatar_url,
+            },
+            {
+                where: {
+                    conversation_id: conversation_id,
+                },
+            }
+        );
+    } catch (error) {
+        throw error;
+    }
+}
+
+const changeNotification = async (conversation_id, member_id, is_muted) => {
+    try {
+        return await ConversationParticipant.update(
+            {
+                is_muted: is_muted,
+            },
+            {
+                where: {
+                    conversation_id: conversation_id,
+                    user_id: member_id
+                },
+            }
+        );
+    } catch (error) {
+        throw error;
+    }
+}
+
 module.exports = {
     createNewConversation,
     createNewGroupConversation,
@@ -178,4 +232,7 @@ module.exports = {
     findMemberOfGroup,
     deleteMember,
     updateRoleParticipant,
+    changeName,
+    changeAvatar,
+    changeNotification
 };

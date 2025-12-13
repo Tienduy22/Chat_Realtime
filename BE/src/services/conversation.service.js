@@ -185,10 +185,155 @@ const adminLeave = async ({conversation_id, admin_id, member_id}) => {
     }
 }
 
+const changeRoleAdmin = async ({conversation_id, admin_id, member_id}) => {
+    try {
+        const conversation = await conversationReponsitory.findById(conversation_id)
+        if(!conversation) {
+            throw {
+                statusCode: 404,
+                message: "Cuộc trò chuyện không tồn tại"
+            }
+        }
+
+        const admin = await userReponsitory.findById(admin_id)
+        if(!admin) {
+            throw {
+                statusCode: 404,
+                message: "Admin không tồn tại"
+            }
+        }
+
+        const member = await userReponsitory.findById(member_id)
+        if(!member) {
+            throw {
+                statusCode: 404,
+                message: "Member không tồn tại"
+            }
+        }
+
+        const participantMember = await conversationReponsitory.findMemberOfGroup(conversation_id, member_id)
+        const participantAdmin = await conversationReponsitory.findMemberOfGroup(conversation_id, admin_id)
+        if(participantAdmin.role != "admin") {
+            throw {
+                statusCode: 404,
+                message: "Tài khoản này không phải admin"
+            }
+        }
+        if(!participantMember) {
+            throw {
+                statusCode: 404,
+                message: "Member không có trong nhóm"
+            }
+        }
+
+        await conversationReponsitory.updateRoleParticipant("admin", participantMember.participant_id)
+        await conversationReponsitory.updateRoleParticipant("member", participantAdmin.participant_id)
+
+        return {
+            message: "Thay đổi admin mới thành công"
+        }
+    } catch (error) {
+        throw error
+    }
+}
+
+const changeName = async ({conversation_id, name, admin_id}) => {
+    try {
+        const conversation = await conversationReponsitory.findById(conversation_id)
+        if(!conversation) {
+            throw {
+                statusCode: 404,
+                message: "Cuộc trò chuyện không tồn tại"
+            }
+        }
+
+        const participantAdmin = await conversationReponsitory.findMemberOfGroup(conversation_id, admin_id)
+        if(participantAdmin.role != "admin") {
+            throw {
+                statusCode: 404,
+                message: "Tài khoản này không phải admin không có quyền thay đổi tên"
+            }
+        }
+
+        await conversationReponsitory.changeName(conversation_id, name)
+        return {
+            message: "Thay đổi tên nhóm thành công"
+        }
+    } catch (error) {
+        throw error
+    }
+}
+
+const changeAvatar = async ({conversation_id, admin_id}, avatar_url) => {
+    try {
+        const conversation = await conversationReponsitory.findById(conversation_id)
+        if(!conversation) {
+            throw {
+                statusCode: 404,
+                message: "Cuộc trò chuyện không tồn tại"
+            }
+        }
+
+        const participantAdmin = await conversationReponsitory.findMemberOfGroup(conversation_id, admin_id)
+        if(participantAdmin.role != "admin") {
+            throw {
+                statusCode: 404,
+                message: "Tài khoản này không phải admin không có quyền thay đổi ảnh nhóm"
+            }
+        }
+
+        await conversationReponsitory.changeAvatar(conversation_id, avatar_url[0])
+        return {
+            message: "Thay đổi ảnh nhóm thành công"
+        }
+    } catch (error) {
+        throw error
+    }
+}
+
+const changeNotification = async ({conversation_id, member_id}) => {
+    try {
+        const conversation = await conversationReponsitory.findById(conversation_id)
+        if(!conversation) {
+            throw {
+                statusCode: 404,
+                message: "Cuộc trò chuyện không tồn tại"
+            }
+        }
+
+        const member = await userReponsitory.findById(member_id)
+        if(!member) {
+            throw {
+                statusCode: 404,
+                message: "Member không tồn tại"
+            }
+        }
+
+        let is_muted
+        const participantMember = await conversationReponsitory.findMemberOfGroup(conversation_id, member_id)
+        if(participantMember.is_muted == "true") {
+            is_muted = false
+        } else {
+            is_muted = true
+        }
+        await conversationReponsitory.changeNotification(conversation_id, member_id, is_muted)
+
+        return {
+            message: "Thay đổi trạng thái thông báo thành công"
+        }
+    } catch (error) {
+        throw error
+    }
+}
+
 module.exports = {
     createNewGroupConversation,
     addMember,
     deleteMember,
     memberLeave,
-    adminLeave
+    adminLeave,
+    changeRoleAdmin,
+    changeName,
+    changeAvatar,
+    changeNotification
 };

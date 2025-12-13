@@ -6,6 +6,8 @@ const {
     groupConversationSchema,
     memberSchema,
     memberLeaveSchema,
+    changeNameSchema,
+    changeAvatarSchema,
 } = require("../validations/conversation.validation");
 
 const router = express.Router();
@@ -40,6 +42,32 @@ router.post(
     "/admin_leave",
     validate(memberSchema),
     conversationController.adminLeave
+);
+
+router.post(
+    "/change_role_admin",
+    validate(memberSchema),
+    conversationController.changeRoleAdmin
+);
+
+router.post(
+    "/change_name",
+    validate(changeNameSchema),
+    conversationController.changeName
+);
+
+router.post(
+    "/change_avatar",
+    upload.array("images", 10),
+    uploadCloudinary,
+    validate(changeAvatarSchema),
+    conversationController.changeAvatar
+);
+
+router.post(
+    "/change_notification",
+    validate(memberLeaveSchema),
+    conversationController.changeNotification
 );
 
 module.exports = router;

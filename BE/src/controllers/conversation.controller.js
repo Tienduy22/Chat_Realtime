@@ -70,11 +70,71 @@ const adminLeave = async (req, res, next) => {
     }
 };
 
+const changeRoleAdmin = async (req, res, next) => {
+    try {
+        const result = await conversationService.changeRoleAdmin(req.body);
+
+        return res.status(201).json({
+            success: true,
+            message: "Thay đổi admin mới thành công",
+            data: result, 
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const changeName = async (req, res, next) => {
+    try {
+        const result = await conversationService.changeName(req.body);
+
+        return res.status(201).json({
+            success: true,
+            message: "Thay đổi tên nhóm thành công",
+            data: result, 
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const changeAvatar = async (req, res, next) => {
+    try {
+        const result = await conversationService.changeAvatar(req.body, req.uploadedImageUrls);
+
+        return res.status(201).json({
+            success: true,
+            message: "Thay đổi ảnh nhóm thành công",
+            data: result, 
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const changeNotification = async (req, res, next) => {
+    try {
+        const result = await conversationService.changeNotification(req.body);
+
+        return res.status(201).json({
+            success: true,
+            message: "Thay đổi trạng thái thông báo thành công",
+            data: result, 
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 
 module.exports = {
     createNewGroupConversation,
     addMember,
     deleteMember,
     memberLeave,
-    adminLeave
+    adminLeave,
+    changeRoleAdmin,
+    changeName,
+    changeAvatar,
+    changeNotification
 }
