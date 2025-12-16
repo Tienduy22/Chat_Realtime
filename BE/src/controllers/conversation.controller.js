@@ -126,6 +126,24 @@ const changeNotification = async (req, res, next) => {
     }
 };
 
+const AllMessageOfConversation = async (req, res, next) => {
+    try {
+        const result = await conversationService.AllMessageOfConversation(
+            req.params.conversationId,
+            req.user.user_id,
+            Number(req.query.limit),
+            Number(req.query.offset)
+        );
+
+        return res.status(201).json({
+            success: true,
+            message: "Lấy tin nhắn thành công",
+            data: result,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
 
 module.exports = {
     createNewGroupConversation,
@@ -136,5 +154,6 @@ module.exports = {
     changeRoleAdmin,
     changeName,
     changeAvatar,
-    changeNotification
+    changeNotification,
+    AllMessageOfConversation
 }

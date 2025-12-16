@@ -1,6 +1,7 @@
 const conversationReponsitory = require("../repositories/conversation.reponsitory");
 const userReponsitory = require("../repositories/user.reponsitory");
 const blockedUserReponsitory = require("../repositories/blockedUser.reponsitory");
+const messageReponsitory = require("../repositories/message.reponsitory");
 
 const createNewGroupConversation = async (data, images) => {
     try {
@@ -326,6 +327,46 @@ const changeNotification = async ({conversation_id, member_id}) => {
     }
 }
 
+const AllMessageOfConversation = async (
+    conversation_id,
+    user_id,
+    limit,
+    offset
+) => {
+    try {
+        const conversation = await conversationReponsitory.findById(
+            conversation_id
+        );
+        if (!conversation) {
+            throw {
+                statusCode: 404,
+                message: "Cuộc trò chuyện không tồn tại",
+            };
+        }
+
+        const user = await conversationReponsitory.findMemberOfGroup(
+            conversation_id,
+            user_id
+        );
+        if (!user) {
+            throw {
+                statusCode: 404,
+                message: "tài khoản này không có quyền xem cuộc trò chuyện này",
+            };
+        }
+
+        const messages = await messageReponsitory.AllMessageOfConversation(
+            conversation_id,
+            limit,
+            offset
+        );
+
+        return messages;
+    } catch (error) {
+        throw error;
+    }
+};
+
 module.exports = {
     createNewGroupConversation,
     addMember,
@@ -335,5 +376,6 @@ module.exports = {
     changeRoleAdmin,
     changeName,
     changeAvatar,
-    changeNotification
+    changeNotification,
+    AllMessageOfConversation
 };

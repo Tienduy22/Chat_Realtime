@@ -8,6 +8,7 @@ const { Server } = require("socket.io");
 const { sequelize } = require("./src/models");
 const initRoutes = require("./src/routes/indexRoute");
 const errorMiddleware = require("./src/middlewares/error.middleware");
+const messageHandlers = require("./src/socket/messageHandlers");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -74,26 +75,8 @@ const io = new Server(server, {
     pingInterval: 25000,
 });
 
-io.on("connection", (socket) => {
-    console.log("✅ User connected:", socket.id);
-
-    socket.on("join", (userId) => {
-        socket.join(`user:${userId}`);
-        console.log(`User ${userId} joined room`);
-    });
-
-    socket.on("leave", (userId) => {
-        socket.leave(`user:${userId}`);
-        console.log(`User ${userId} left room`);
-    });
-
-    socket.on("disconnect", () => {
-        console.log("❌ User disconnected:", socket.id);
-    });
-
-    socket.on("error", (error) => {
-        console.error("Socket error:", error);
-    });
+io.on('connection', (socket) => {
+  messageHandlers(io, socket);
 });
 
 global.io = io;

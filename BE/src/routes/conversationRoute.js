@@ -9,8 +9,11 @@ const {
     changeNameSchema,
     changeAvatarSchema,
 } = require("../validations/conversation.validation");
+const { authenticate } = require("../middlewares/auth.middleware");
 
 const router = express.Router();
+
+router.get("/:conversationId", authenticate, conversationController.AllMessageOfConversation)
 
 router.post(
     "/new_group",
