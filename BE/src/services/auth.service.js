@@ -65,8 +65,8 @@ const register = async (registerData) => {
                 status: user.status,
             },
             tokens: {
-                access_token: access_token,
-                refresh_token: refresh_token,
+                access_token,
+                refresh_token,
             },
         };
     } catch (error) {
@@ -119,8 +119,8 @@ const login = async (loginData) => {
             status: "online",
         },
         tokens: {
-            access_token: access_token,
-            refresh_token: refresh_token,
+            access_token,
+            refresh_token,
         },
     };
 };
@@ -205,5 +205,5 @@ module.exports = {
     login,
     refreshToken,
     profile,
-    logout
+    logout,
 };

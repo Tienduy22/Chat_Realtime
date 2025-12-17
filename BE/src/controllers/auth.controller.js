@@ -3,6 +3,23 @@ const authService = require("../services/auth.service")
 const register = async (req, res, next) => {
     try {
         const result = await authService.register(req.body);
+        const { access_token, refresh_token } = result.tokens;
+
+        res.cookie("access_token", access_token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
+            maxAge: 60 * 60 * 1000, 
+            path: "/",
+        });
+
+        res.cookie("refresh_token", refresh_token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
+            maxAge: 7 * 24 * 60 * 60 * 1000, 
+            path: "/api/auth/refresh", 
+        });
 
         return res.status(201).json({
             success: true,
@@ -17,6 +34,23 @@ const register = async (req, res, next) => {
 const login = async (req, res, next) => {
     try {
         const result = await authService.login(req.body);
+        const { access_token, refresh_token } = result.tokens;
+
+        res.cookie("access_token", access_token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
+            maxAge: 60 * 60 * 1000, 
+            path: "/",
+        });
+
+        res.cookie("refresh_token", refresh_token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
+            maxAge: 7 * 24 * 60 * 60 * 1000, 
+            path: "/", 
+        });
 
         return res.status(200).json({
             success: true,

@@ -14,52 +14,56 @@ import { SocketProvider } from "../context/SocketContext";
 import Loading from "../components/common/Loading/Loading";
 import NotFound from "../pages/NotFound/NotFound";
 import { Suspense } from "react";
+import ChatPage from "../pages/Chat/ChatPage";
+import ConversationDetail from "../pages/Chat/ConversationDetail";
+import Login from "../pages/Auth/Login";
+import Register from "../pages/Auth/Register";
 
 
 export const routeConfig = {
     // Public routes 
     public: [
-        // {
-        //     path: "/login",
-        //     element: Login,
-        //     meta: {
-        //         title: "Đăng nhập",
-        //         description: "Đăng nhập vào Chat App",
-        //     },
-        // },
-        // {
-        //     path: "/register",
-        //     element: Register,
-        //     meta: {
-        //         title: "Đăng ký",
-        //         description: "Tạo tài khoản mới",
-        //     },
-        // },
+        {
+            path: "/login",
+            element: Login,
+            meta: {
+                title: "Đăng nhập",
+                description: "Đăng nhập vào Chat App",
+            },
+        },
+        {
+            path: "/register",
+            element: Register,
+            meta: {
+                title: "Đăng ký",
+                description: "Tạo tài khoản mới",
+            },
+        },
     ],
 
     // Protected routes
     protected: [
-        // {
-        //     path: "/",
-        //     redirect: "/chat",
-        // },
-        // {
-        //     path: "/chat",
-        //     element: ChatPage,
-        //     meta: {
-        //         title: "Chat",
-        //         icon: "MessageSquare",
-        //         showInSidebar: true,
-        //     },
-        // },
-        // {
-        //     path: "/chat/:conversationId",
-        //     element: ConversationDetail,
-        //     meta: {
-        //         title: "Chi tiết cuộc trò chuyện",
-        //         showInSidebar: false,
-        //     },
-        // },
+        {
+            path: "/",
+            redirect: "/chat",
+        },
+        {
+            path: "/chat",
+            element: ChatPage,
+            meta: {
+                title: "Chat",
+                icon: "MessageSquare",
+                showInSidebar: true,
+            },
+        },
+        {
+            path: "/chat/:conversationId",
+            element: ConversationDetail,
+            meta: {
+                title: "Chi tiết cuộc trò chuyện",
+                showInSidebar: false,
+            },
+        },
         // {
         //     path: "/contacts",
         //     element: ContactsPage,
