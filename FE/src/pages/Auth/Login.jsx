@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { login } from "../../services/auth.service";
+import { useDispatch } from "react-redux";
+import { updateUser } from "../../Redux/reducers/userReducer";
 
 
 export default function Login() {
@@ -8,6 +10,7 @@ export default function Login() {
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const dispatch = useDispatch()
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -19,6 +22,7 @@ export default function Login() {
                 username: username, 
                 password: password,
             });
+            dispatch(updateUser({ ...response.data.user }))
 
             if (response.success) {
                 window.location.href = "/chat";

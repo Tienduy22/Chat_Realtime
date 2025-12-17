@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { register } from "../../services/auth.service";
+import { useDispatch } from "react-redux";
+import { updateUser } from "../../Redux/reducers/userReducer";
 
 export default function Register() {
     const [username, setUsername] = useState("");
@@ -11,6 +13,7 @@ export default function Register() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
+    const dispatch = useDispatch()
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -35,6 +38,7 @@ export default function Register() {
 
         try {
             const response = await register(registerData);
+            dispatch(updateUser({ ...response.data.user }))
 
             setSuccess(response.message || "Đăng ký tài khoản thành công!");
 

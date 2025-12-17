@@ -1,150 +1,88 @@
-import { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import {
-  Search,
-  Plus,
-  LogOut,
-  Menu,
-  X // Để đóng sidebar trên mobile
-} from 'lucide-react';
+import React from "react";
+import { useDispatch } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import { removeUser } from "../../../Redux/reducers/userReducer";
 
 const Sidebar = () => {
-  const [isOpen, setIsOpen] = useState(false); // Chỉ dùng cho mobile
-  const navigate = useNavigate();
-  const location = useLocation();
+    const navigate = useNavigate();
+    const dispatch = useDispatch();
 
-  const isInConversation = location.pathname.startsWith('/chat/') && location.pathname !== '/chat';
+    const handleProfileClick = () => {
+        navigate("/profile");
+    };
 
-  const currentUser = { name: 'Ricky Smith', avatar: 'RS' };
+    const handleLogout = () => {
 
-  const conversations = [
-    { id: '1', name: 'Stephanie Sharky', avatar: 'SS', online: true, lastMessage: 'How are you?', time: '10:42 AM', unread: 0 },
-    { id: '2', name: 'Rodger Struck', avatar: 'RS', online: false, lastMessage: 'See you later', time: 'Yesterday', unread: 3 },
-    { id: '3', name: 'Jerry Helfer', avatar: 'JH', online: true, lastMessage: 'Thanks!', time: '2h ago', unread: 0 },
-    { id: '4', name: 'James Hall', avatar: 'JH', online: false, lastMessage: 'Cool!', time: '3h ago', unread: 1 },
-    { id: '5', name: 'Lori Warf', avatar: 'LW', online: true, lastMessage: 'Hey!', time: '5m ago', unread: 2 },
-  ];
+        if (confirm("Bạn có chắc chắn muốn đăng xuất?")) {
+            dispatch(removeUser())
+        }
+    };
 
-  const handleSelectConversation = (id) => {
-    navigate(`/chat/${id}`);
-    setIsOpen(false); // Đóng sidebar trên mobile sau khi chọn
-  };
-
-  const handleLogout = () => {
-    navigate('/login');
-  };
-
-  // Tự động mở sidebar trên mobile khi đang xem chi tiết chat (để có nút back)
-  // Nhưng mặc định ẩn khi ở trang welcome
-
-  return (
-    <>
-      {/* Overlay khi mở sidebar trên mobile */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={() => setIsOpen(false)}
-        />
-      )}
-
-      {/* Sidebar */}
-      <aside
-        className={`fixed inset-y-0 left-0 w-80 bg-white border-r border-gray-200 flex flex-col shadow-lg z-50 transform transition-transform duration-300 ease-in-out
-          ${isOpen || isInConversation ? 'translate-x-0' : '-translate-x-full'}
-          lg:translate-x-0 lg:static lg:z-auto
-        `}
-      >
-        {/* Header */}
-        <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-900">Chats</h1>
-          <div className="flex items-center gap-2">
-            <button className="p-2 hover:bg-gray-100 rounded-lg transition">
-              <Plus size={22} className="text-gray-600" />
-            </button>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition lg:hidden"
-            >
-              <X size={24} className="text-gray-600" />
-            </button>
-          </div>
-        </div>
-
-        {/* Search */}
-        <div className="p-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-            <input
-              type="text"
-              placeholder="Search Messenger..."
-              className="w-full pl-10 pr-4 py-2.5 bg-gray-100 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-            />
-          </div>
-        </div>
-
-        {/* Danh sách cuộc trò chuyện */}
-        <div className="flex-1 overflow-y-auto">
-          {conversations.map((conv) => (
-            <div
-              key={conv.id}
-              onClick={() => handleSelectConversation(conv.id)}
-              className={`flex items-center gap-3 p-3 mx-2 mt-1 rounded-lg cursor-pointer transition-all hover:bg-gray-100 ${
-                location.pathname === `/chat/${conv.id}` ? 'bg-gray-100' : ''
-              }`}
-            >
-              <div className="relative">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md">
-                  {conv.avatar}
-                </div>
-                {conv.online && (
-                  <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex justify-between items-start">
-                  <h4 className="text-gray-900 font-medium truncate">{conv.name}</h4>
-                  <span className="text-xs text-gray-500">{conv.time}</span>
-                </div>
-                <p className="text-sm text-gray-600 truncate">{conv.lastMessage}</p>
-              </div>
-              {conv.unread > 0 && (
-                <div className="bg-blue-600 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center shadow">
-                  {conv.unread}
-                </div>
-              )}
+    return (
+        <nav className="w-16 md:w-20 bg-white dark:bg-sidebar-dark border-r border-gray-200 dark:border-gray-800 flex flex-col items-center py-6 gap-8 z-20 flex-shrink-0">
+            {/* Logo */}
+            <div className="h-10 w-10 md:h-12 md:w-12 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30 mb-2 cursor-pointer hover:scale-105 transition-transform">
+                <span className="material-icons text-white text-2xl md:text-3xl">
+                    bolt
+                </span>
             </div>
-          ))}
-        </div>
 
-        {/* User Info + Logout */}
-        <div className="p-4 border-t border-gray-200 flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold shadow-md">
-            {currentUser.avatar}
-          </div>
-          <div className="flex-1">
-            <p className="text-gray-900 font-medium">{currentUser.name}</p>
-            <p className="text-xs text-gray-500">Online</p>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="p-2 hover:bg-gray-100 rounded-lg transition text-gray-600 hover:text-red-600"
-          >
-            <LogOut size={20} />
-          </button>
-        </div>
-      </aside>
+            {/* Menu items */}
+            <div className="flex flex-col gap-6 w-full items-center flex-1">
+                <button className="relative group p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-primary transition-all">
+                    <span className="material-icons">chat_bubble</span>
+                    <span className="absolute top-2 right-2 h-2.5 w-2.5 bg-red-500 rounded-full border-2 border-white dark:border-sidebar-dark"></span>
+                    <div className="absolute left-14 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
+                        Messages
+                    </div>
+                </button>
 
-      {/* Nút mở sidebar trên mobile - chỉ hiển thị khi chưa mở và không ở trong conversation */}
-      {!isOpen && !isInConversation && (
-        <button
-          onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 left-6 z-50 p-4 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition lg:hidden"
-        >
-          <Menu size={24} />
-        </button>
-      )}
-    </>
-  );
+                {["call", "people", "folder"].map((icon) => (
+                    <button
+                        key={icon}
+                        className="relative group p-3 rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
+                    >
+                        <span className="material-icons">{icon}</span>
+                        <div className="absolute left-14 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
+                            {icon === "call"
+                                ? "Calls"
+                                : icon === "people"
+                                  ? "Contacts"
+                                  : "Files"}
+                        </div>
+                    </button>
+                ))}
+            </div>
+
+            {/* Bottom: Avatar + Logout (Logout ở dưới cùng) */}
+            <div className="flex flex-col gap-5 items-center">
+                {/* Avatar - Click để sang /profile */}
+                <div
+                    onClick={handleProfileClick}
+                    className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-orange-200 overflow-hidden cursor-pointer border-2 border-transparent hover:border-primary transition-all shadow-lg hover:shadow-xl"
+                    title="View Profile"
+                >
+                    <img
+                        alt="User Profile"
+                        className="h-full w-full object-cover"
+                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuAr17tSemUyw6elNJg_pIYSJZN8rs5oibcsZWm6QgkKTpZ0bMKcDRSnCHJZxk5OsXUlw8xf_zss4gkoihXbaCvg2zJgdAaiRpDPnr00LqGbyQ025VjuRz22BIKEhvwIFf8isOHuDwnlURsJYFdlgdAS7DXqn15C56eDOe8nw2bJUH0FcyInS3xcm37cKJETXq72zjaL4bGiQbXMFr9x5yJvl0njByjTUXj3ov92v4aea1Io7BdpESEWkYQUp3pm0O3WSNl3co6y0kY"
+                    />
+                </div>
+
+                {/* Logout Button - Đặt dưới avatar */}
+                <button
+                    onClick={handleLogout}
+                    className="relative group p-3 rounded-xl text-gray-400 hover:text-red-600 dark:hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
+                    title="Log Out"
+                >
+                    <span className="material-icons text-2xl">logout</span>
+                    <div className="absolute left-14 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
+                        Log Out
+                    </div>
+                </button>
+            </div>
+        </nav>
+    );
 };
 
 export default Sidebar;
