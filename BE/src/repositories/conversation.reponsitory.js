@@ -4,7 +4,9 @@ const {
     Conversation,
     ConversationParticipant,
     sequelize,
+    Message,
 } = require("../models");
+const { Op } = require("sequelize");
 
 const createNewConversation = async (userId, friendId) => {
     const transaction = await sequelize.transaction();
@@ -218,7 +220,7 @@ const changeAvatar = async (conversation_id, avatar_url) => {
     } catch (error) {
         throw error;
     }
-}
+};
 
 const changeNotification = async (conversation_id, member_id, is_muted) => {
     try {
@@ -229,14 +231,95 @@ const changeNotification = async (conversation_id, member_id, is_muted) => {
             {
                 where: {
                     conversation_id: conversation_id,
-                    user_id: member_id
+                    user_id: member_id,
                 },
             }
         );
     } catch (error) {
         throw error;
     }
-}
+};
+
+const listConversation = async (user_id) => {
+    try {
+        const listConversation = await ConversationParticipant.findAll({
+            where: {
+                user_id: user_id,
+            },
+            attributes: [
+                "participant_id",
+                "last_read_message_id",
+                "unread_count",
+            ],
+            include: [
+                {
+                    model: Conversation,
+                    as: "conversation",
+                    attributes: [
+                        "conversation_id",
+                        "conversation_type",
+                        "name",
+                        "avatar_url",
+                    ],
+                    include: [
+                        {
+                            model: ConversationParticipant,
+                            as: "participants",
+                            where: {
+                                is_active: true,
+                                user_id: { [Op.ne]: user_id },
+                            },
+                            required: false,
+                            attributes: ["participant_id"],
+                            include: [
+                                {
+                                    model: User,
+                                    as: "user",
+                                    attributes: [
+                                        "user_id",
+                                        "full_name",
+                                        "avatar_url",
+                                        "last_seen",
+                                    ],
+                                },
+                            ],
+                        },
+                        {
+                            model: Message,
+                            as: "messages", 
+                            limit: 1,
+                            order: [["created_at", "DESC"]], 
+                            attributes: [
+                                "message_id",
+                                "content",
+                                "message_type",
+                                "created_at",
+                                "sender_id",
+                            ],
+                            include: [
+                                {
+                                    model: User,
+                                    as: "sender",
+                                    attributes: [
+                                        "user_id",
+                                        "full_name",
+                                        "avatar_url",
+                                    ],
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+            order: [["updated_at", "DESC"]],
+        });
+
+        return listConversation;
+    } catch (error) {
+        throw error;
+    }
+};
+
 
 module.exports = {
     createNewConversation,
@@ -249,5 +332,6 @@ module.exports = {
     updateRoleParticipant,
     changeName,
     changeAvatar,
-    changeNotification
+    changeNotification,
+    listConversation,
 };

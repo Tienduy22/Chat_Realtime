@@ -46,6 +46,39 @@ const createNewGroupConversation = async (data, images) => {
     }
 };
 
+const createNewConversation = async ({user_id1, user_id2}) => {
+    try {
+        const user1 = await userReponsitory.findById(user_id1)
+        if(!user1) {
+            throw {
+                statusCode: 404,
+                message: "Tài khoản không tồn tại hoặc bị khóa"
+            }
+        }
+
+        const user2 = await userReponsitory.findById(user_id2)
+        if(!user2) {
+            throw {
+                statusCode: 404,
+                message: "Tài khoản không tồn tại hoặc bị khóa"
+            }
+        }
+
+        const block = await blockedUserReponsitory.findBlock(user_id1, user_id2)
+        if(block){
+            throw {
+                statusCode: 409,
+                message: "Không thể trò chuyện với người đã blocked"
+            }
+        }
+
+        const conversation = await conversationReponsitory.createNewConversation(user_id1, user_id2) 
+        return conversation
+    } catch (error) {
+        throw error
+    }
+}
+
 const addMember = async ({conversation_id, admin_id, member_id}) => {
     try {
         const conversation = await conversationReponsitory.findById(conversation_id)
@@ -367,8 +400,27 @@ const AllMessageOfConversation = async (
     }
 };
 
+const listConversation = async (user_id) => {
+    try {
+        const listConversation = await conversationReponsitory.listConversation(user_id)
+        return listConversation
+    } catch (error) {
+        throw error
+    }
+}
+
+const findById = async (conversation_id) => {
+    try {
+        const conversation = await conversationReponsitory.findById(conversation_id)
+        return conversation
+    } catch (error) {
+        throw error
+    }
+}
+
 module.exports = {
     createNewGroupConversation,
+    createNewConversation,
     addMember,
     deleteMember,
     memberLeave,
@@ -377,5 +429,7 @@ module.exports = {
     changeName,
     changeAvatar,
     changeNotification,
-    AllMessageOfConversation
+    AllMessageOfConversation,
+    listConversation,
+    findById
 };

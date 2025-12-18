@@ -5,6 +5,7 @@ const helmet = require("helmet");
 const morgan = require("morgan");
 const http = require("http");
 const { Server } = require("socket.io");
+const cookieParser = require('cookie-parser');
 const { sequelize } = require("./src/models");
 const initRoutes = require("./src/routes/indexRoute");
 const errorMiddleware = require("./src/middlewares/error.middleware");
@@ -33,6 +34,7 @@ if (process.env.NODE_ENV === "development") {
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use(cookieParser());
 
 // =====================================================
 // ROUTES
@@ -67,7 +69,7 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
     cors: {
-        origin: process.env.CLIENT_URL || "http://localhost:3001",
+        origin: process.env.CLIENT_URL || "http://localhost:3000",
         methods: ["GET", "POST"],
         credentials: true,
     },
@@ -75,6 +77,7 @@ const io = new Server(server, {
     pingInterval: 25000,
 });
 
+io.engine.use(cookieParser());
 io.on('connection', (socket) => {
   messageHandlers(io, socket);
 });

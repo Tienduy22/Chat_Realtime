@@ -38,6 +38,8 @@ const createMessage = async (req) => {
         const hasVideos = req.uploadedVideoUrls?.length > 0;
         const hasDocuments = req.uploadedDocumentUrls?.length > 0;
 
+        const hasMedia = hasImages || hasVideos || hasDocuments;
+
         let message_type = "text";
         if (!hasText && hasMedia) {
             if (hasImages && !hasVideos && !hasDocuments)
@@ -62,7 +64,10 @@ const createMessage = async (req) => {
 
             if (req.body.mention_ids) {
                 req.body.mention_ids.forEach(async (mention_id) => {
-                    await messageReponsitory.mention(message.message_id, mention_id);
+                    await messageReponsitory.mention(
+                        message.message_id,
+                        mention_id
+                    );
                 });
             }
 
@@ -129,14 +134,12 @@ const createMessage = async (req) => {
 
         let result = [];
 
-        messages.forEach(async (message) => {
-            let fullMessage = await messageReponsitory.fullMessage(
+        for (const message of messages) {
+            const fullMessage = await messageReponsitory.fullMessage(
                 message.message_id
             );
-
             result.push(fullMessage);
-        });
-        result.push(sender);
+        }
 
         await messageReponsitory.incrementUnreadCount(
             conversation_id,
@@ -150,16 +153,27 @@ const createMessage = async (req) => {
                 await conversationReponsitory.findAllMemberOfGroup(
                     conversation_id
                 );
+
+            const payload = {
+                conversation_id: conversation_id,
+                messages: result, 
+                sender: {
+                    user_id: sender.user_id,
+                    full_name: sender.full_name,
+                    avatar_url: sender.avatar_url,
+                },
+            };
+
             participants.forEach((member) => {
-                if (member.user_id != sender_id) {
-                    io.to(`user:${member.user_id}`).emit("new_message", result);
-                    console.log(`✅ Sent message to user:${member.user_id}`);
-                }
+                io.to(`user:${member.user_id}`).emit("new_message", payload);
+                console.log(
+                    `✅ Sent ${result.length} messages to user:${member.user_id}`
+                );
             });
 
             io.to(`conversation:${conversation_id}`).emit(
                 "new_message",
-                result
+                payload
             );
         }
 

@@ -50,7 +50,9 @@ const ConversationParticipant = sequelize.define(
     },
     {
         tableName: "conversation_participants",
-        timestamps: false,
+        timestamps: true,
+        createdAt: "created_at",
+        updatedAt: "updated_at",
         indexes: [{ fields: ["conversation_id", "user_id"], unique: true }],
     }
 );

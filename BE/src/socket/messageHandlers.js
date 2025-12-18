@@ -4,7 +4,7 @@ const messageHandlers = (io, socket) => {
     console.log('✅ User connected:', socket.id);
 
     // 1. AUTHENTICATE SOCKET
-    const token = socket.handshake.auth.token
+    const token = socket.request.cookies.access_token
     let user_id     
 
     try {
@@ -18,12 +18,13 @@ const messageHandlers = (io, socket) => {
     }
 
     // 2. JOIN USER ROOM
-    socket.join(`user: ${user_id}`)
+    socket.join(`user:${user_id}`)
 
     // 3. JOIN CONVERSATION ROOM
     socket.on('join_conversation', (conversation_id) => {
-        socket.join(`conversation: ${conversation_id}`)
-        socket.to(`conversation: ${conversation_id}`).emit('user_joined', {
+        socket.join(`conversation:${conversation_id}`)
+        console.log(`User ${user_id} joined conversation:${conversation_id}`);
+        socket.to(`conversation:${conversation_id}`).emit('user_joined', {
             conversation_id: conversation_id,
             user_id: user_id
         })
@@ -31,8 +32,8 @@ const messageHandlers = (io, socket) => {
     
     // 4. LEAVE CONVERSATION ROOM
     socket.on('leave_conversation', (conversation_id) => {
-        socket.leave(`conversaion: ${conversation_id}`)
-        socket.to(`conversation: ${conversation_id}`).emit('user_leaved', {
+        socket.leave(`conversation:${conversation_id}`)
+        socket.to(`conversation:${conversation_id}`).emit('user_leaved', {
             conversation_id: conversation_id,
             user_id: user_id
         })
@@ -40,7 +41,7 @@ const messageHandlers = (io, socket) => {
 
     // 5. TYPING INDICATOR
     socket.on('typing_start', (conversation_id) => {
-        socket.to(`conversation: ${conversation_id}`).emit('user_typing', {
+        socket.to(`conversation:${conversation_id}`).emit('user_typing', {
             conversation_id: conversation_id,
             user_id: user_id,
             is_typing: true
@@ -48,7 +49,7 @@ const messageHandlers = (io, socket) => {
     })
 
     socket.on('typing_stop', (conversation_id) => {
-        socket.to(`conversation: ${conversation_id}`).emit('user_typing', {
+        socket.to(`conversation:${conversation_id}`).emit('user_typing', {
             conversation_id: conversation_id,
             user_id: user_id,
             is_typing: false

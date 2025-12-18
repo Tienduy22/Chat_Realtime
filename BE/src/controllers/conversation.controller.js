@@ -1,13 +1,32 @@
-const conversationService = require("../services/conversation.service")
+const conversationService = require("../services/conversation.service");
 
 const createNewGroupConversation = async (req, res, next) => {
     try {
-        const result = await conversationService.createNewGroupConversation(req.body, req.uploadedImageUrls);
+        const result = await conversationService.createNewGroupConversation(
+            req.body,
+            req.uploadedImageUrls
+        );
 
         return res.status(201).json({
             success: true,
             message: "Tạo nhóm chat thành công",
-            data: result, 
+            data: result,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const createNewConversation = async (req, res, next) => {
+    try {
+        const result = await conversationService.createNewConversation(
+            req.body,
+        );
+
+        return res.status(201).json({
+            success: true,
+            message: "Tạo nhóm chat thành công",
+            data: result,
         });
     } catch (error) {
         next(error);
@@ -21,7 +40,7 @@ const addMember = async (req, res, next) => {
         return res.status(201).json({
             success: true,
             message: "Thêm thành viên thành công",
-            data: result, 
+            data: result,
         });
     } catch (error) {
         next(error);
@@ -35,7 +54,7 @@ const deleteMember = async (req, res, next) => {
         return res.status(201).json({
             success: true,
             message: "Xóa thành viên thành công",
-            data: result, 
+            data: result,
         });
     } catch (error) {
         next(error);
@@ -49,7 +68,7 @@ const memberLeave = async (req, res, next) => {
         return res.status(201).json({
             success: true,
             message: "Rời nhóm thành công",
-            data: result, 
+            data: result,
         });
     } catch (error) {
         next(error);
@@ -63,7 +82,7 @@ const adminLeave = async (req, res, next) => {
         return res.status(201).json({
             success: true,
             message: "Rời nhóm thành công",
-            data: result, 
+            data: result,
         });
     } catch (error) {
         next(error);
@@ -77,7 +96,7 @@ const changeRoleAdmin = async (req, res, next) => {
         return res.status(201).json({
             success: true,
             message: "Thay đổi admin mới thành công",
-            data: result, 
+            data: result,
         });
     } catch (error) {
         next(error);
@@ -91,7 +110,7 @@ const changeName = async (req, res, next) => {
         return res.status(201).json({
             success: true,
             message: "Thay đổi tên nhóm thành công",
-            data: result, 
+            data: result,
         });
     } catch (error) {
         next(error);
@@ -100,12 +119,15 @@ const changeName = async (req, res, next) => {
 
 const changeAvatar = async (req, res, next) => {
     try {
-        const result = await conversationService.changeAvatar(req.body, req.uploadedImageUrls);
+        const result = await conversationService.changeAvatar(
+            req.body,
+            req.uploadedImageUrls
+        );
 
         return res.status(201).json({
             success: true,
             message: "Thay đổi ảnh nhóm thành công",
-            data: result, 
+            data: result,
         });
     } catch (error) {
         next(error);
@@ -119,7 +141,7 @@ const changeNotification = async (req, res, next) => {
         return res.status(201).json({
             success: true,
             message: "Thay đổi trạng thái thông báo thành công",
-            data: result, 
+            data: result,
         });
     } catch (error) {
         next(error);
@@ -129,7 +151,7 @@ const changeNotification = async (req, res, next) => {
 const AllMessageOfConversation = async (req, res, next) => {
     try {
         const result = await conversationService.AllMessageOfConversation(
-            req.params.conversationId,
+            req.params.conversation_id,
             req.user.user_id,
             Number(req.query.limit),
             Number(req.query.offset)
@@ -145,8 +167,41 @@ const AllMessageOfConversation = async (req, res, next) => {
     }
 };
 
+const listConversation = async (req, res, next) => {
+    try {
+        const result = await conversationService.listConversation(
+            req.user.user_id
+        );
+
+        return res.status(201).json({
+            success: true,
+            message: "Lấy data thành công",
+            data: result,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const findById = async (req, res, next) => {
+    try {
+        const result = await conversationService.findById(
+            req.params.conversation_id
+        );
+
+        return res.status(201).json({
+            success: true,
+            message: "Lấy data thành công",
+            data: result,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     createNewGroupConversation,
+    createNewConversation,
     addMember,
     deleteMember,
     memberLeave,
@@ -155,5 +210,7 @@ module.exports = {
     changeName,
     changeAvatar,
     changeNotification,
-    AllMessageOfConversation
-}
+    AllMessageOfConversation,
+    listConversation,
+    findById
+};

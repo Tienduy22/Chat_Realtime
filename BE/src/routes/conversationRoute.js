@@ -13,7 +13,16 @@ const { authenticate } = require("../middlewares/auth.middleware");
 
 const router = express.Router();
 
-router.get("/:conversationId", authenticate, conversationController.AllMessageOfConversation)
+router.get("/list_conversation", authenticate, conversationController.listConversation)
+
+router.get("/:conversation_id", authenticate, conversationController.AllMessageOfConversation)
+
+router.get("/detail/:conversation_id", authenticate, conversationController.findById)
+
+router.post(
+    "/new_conversation",
+    conversationController.createNewConversation
+);
 
 router.post(
     "/new_group",

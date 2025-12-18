@@ -3,13 +3,14 @@ const { verifyAccessToken } = require("../utils/jwt");
 
 const authenticate = async (req, res, next) => {
     try {
-        const authHeader = req.headers.authorization;
+        const token = req.cookies.access_token;
 
-        if (!authHeader || !authHeader.startsWith("Bearer ")) {
-            throw { statusCode: 401, message: "Token không được cung cấp" };
+        if (!token) {
+            return res.status(401).json({
+                success: false,
+                message: "Token không được cung cấp",
+            });
         }
-
-        const token = authHeader.substring(7);
 
         let decoded;
         try {
