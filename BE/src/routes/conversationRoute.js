@@ -82,4 +82,9 @@ router.post(
     conversationController.changeNotification
 );
 
+router.patch(
+    "/update_conversation",
+    conversationController.updateConversation
+);
+
 module.exports = router;

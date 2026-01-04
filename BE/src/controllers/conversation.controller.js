@@ -199,6 +199,24 @@ const findById = async (req, res, next) => {
     }
 };
 
+const updateConversation = async (req, res, next) => {
+    try {
+        const result = await conversationService.updateConversation(
+            req.query.conversation_id,
+            req.query.user_id,
+            req.body
+        );
+
+        return res.status(201).json({
+            success: true,
+            message: "Cập nhật thông tin nhóm thành công",
+            data: result,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     createNewGroupConversation,
     createNewConversation,
@@ -212,5 +230,6 @@ module.exports = {
     changeNotification,
     AllMessageOfConversation,
     listConversation,
-    findById
+    findById,
+    updateConversation
 };

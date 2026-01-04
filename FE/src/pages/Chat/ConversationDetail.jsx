@@ -1,5 +1,5 @@
 // src/pages/chat/ConversationDetail.jsx
-import React, { useState, useEffect, useRef, useLayoutEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { format, isToday, isYesterday } from "date-fns";
 import Avatar from "../../components/common/Avatar/Avatar";
 import ConversationInfo from "./ConversationInfo";
@@ -29,15 +29,20 @@ export default function ConversationDetail() {
     const [hasMore, setHasMore] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
 
+    // Trạng thái online/offline
+    const [onlineUsers, setOnlineUsers] = useState(new Set());
+    const [lastSeen, setLastSeen] = useState(new Map());
+
     const messagesContainerRef = useRef(null);
-    const isFirstLoadRef = useRef(true);
     const previousScrollHeightRef = useRef(0);
 
     const user = useSelector((state) => state.user);
     const currentUserId = user?.user_id;
 
     const LIMIT = 20;
+    const OFFLINE_TIMEOUT = 5 * 60 * 1000; // 5 phút
 
+    // Scroll functions
     const scrollToBottom = (immediate = false) => {
         if (messagesContainerRef.current) {
             if (immediate) {
@@ -61,8 +66,8 @@ export default function ConversationDetail() {
         }
     };
 
+    // Reset khi đổi conversation
     useEffect(() => {
-        isFirstLoadRef.current = true;
         setMessages([]);
         setLoading(true);
         setOffset(0);
@@ -71,6 +76,7 @@ export default function ConversationDetail() {
         setTypingUsers(new Set());
     }, [convIdParam]);
 
+    // Join/leave conversation
     useEffect(() => {
         if (!socket || isNaN(conversationId)) return;
 
@@ -81,90 +87,121 @@ export default function ConversationDetail() {
         };
     }, [socket, conversationId]);
 
-    // Realtime new message - Thay thế tin nhắn tạm (pending)
+    // Cleanup offline users định kỳ
+    useEffect(() => {
+        const interval = setInterval(() => {
+            const now = Date.now();
+            setOnlineUsers((prev) => {
+                const newSet = new Set(prev);
+                setLastSeen((prevLastSeen) => {
+                    const newMap = new Map(prevLastSeen);
+                    for (let [userId, timestamp] of newMap) {
+                        if (now - timestamp > OFFLINE_TIMEOUT) {
+                            newSet.delete(userId);
+                        }
+                    }
+                    return newMap;
+                });
+                return newSet;
+            });
+        }, 30000);
+
+        return () => clearInterval(interval);
+    }, []);
+
+    // Socket: online/offline/activity + initial sync
+    useEffect(() => {
+        if (!socket) return;
+
+        const handleUserOnline = (data) => {
+            setOnlineUsers((prev) => new Set(prev).add(data.user_id));
+            setLastSeen((prev) => new Map(prev).set(data.user_id, Date.now()));
+        };
+
+        const handleUserActivity = (data) => {
+            setLastSeen((prev) => new Map(prev).set(data.user_id, Date.now()));
+            setOnlineUsers((prev) => new Set(prev).add(data.user_id));
+        };
+
+        const handleUserOffline = (data) => {
+            setOnlineUsers((prev) => {
+                const newSet = new Set(prev);
+                newSet.delete(data.user_id);
+                return newSet;
+            });
+        };
+
+        const handleInitialOnline = (users) => {
+            setOnlineUsers(new Set(users.map((u) => u.user_id)));
+            setLastSeen(new Map(users.map((u) => [u.user_id, u.last_seen])));
+        };
+
+        socket.on("user_online", handleUserOnline);
+        socket.on("user_activity", handleUserActivity);
+        socket.on("user_offline", handleUserOffline);
+        socket.on("initial_online_users", handleInitialOnline);
+
+        return () => {
+            socket.off("user_online", handleUserOnline);
+            socket.off("user_activity", handleUserActivity);
+            socket.off("user_offline", handleUserOffline);
+            socket.off("initial_online_users", handleInitialOnline);
+        };
+    }, [socket]);
+
+    // Realtime new message
     useEffect(() => {
         if (!socket || isNaN(conversationId)) return;
 
         const handleNewMessage = (data) => {
-            console.log("📨 Nhận tin nhắn mới qua socket:", data);
+            if (Number(data.conversation_id) !== conversationId) return;
+            if (!data.messages || data.messages.length === 0) return;
 
-            try {
-                if (
-                    !data ||
-                    !data.conversation_id ||
-                    !data.messages ||
-                    !Array.isArray(data.messages)
-                ) {
-                    console.error("❌ Invalid payload structure:", data);
-                    return;
+            const senderInfo =
+                data.sender && data.sender.user_id
+                    ? {
+                          user_id: data.sender.user_id,
+                          full_name: data.sender.full_name || "",
+                          avatar_url: data.sender.avatar_url || "",
+                      }
+                    : null;
+
+            const realMessages = data.messages
+                .filter((msg) => msg && msg.message_id)
+                .map((msg) => ({
+                    ...msg,
+                    sender: senderInfo || { user_id: msg.sender_id },
+                    isPending: false,
+                }));
+
+            setMessages((prev) => {
+                const pendingIndices = [];
+                for (let i = prev.length - 1; i >= 0; i--) {
+                    if (prev[i].isPending) pendingIndices.unshift(i);
+                    else break;
                 }
 
-                if (Number(data.conversation_id) !== conversationId) return;
-                if (data.messages.length === 0) return;
-
-                const senderInfo =
-                    data.sender && data.sender.user_id
-                        ? {
-                              user_id: data.sender.user_id,
-                              full_name: data.sender.full_name || "",
-                              avatar_url: data.sender.avatar_url || "",
-                          }
-                        : null;
-
-                const realMessages = data.messages
-                    .filter((msg) => msg && msg.message_id)
-                    .map((msg) => ({
-                        ...msg,
-                        sender: senderInfo || { user_id: msg.sender_id },
-                        isPending: false,
-                    }));
-
-                setMessages((prev) => {
-                    // Tìm các tin nhắn pending ở cuối danh sách
-                    const pendingIndices = [];
-                    for (let i = prev.length - 1; i >= 0; i--) {
-                        if (prev[i].isPending) {
-                            pendingIndices.unshift(i);
-                        } else {
-                            break;
-                        }
-                    }
-
-                    if (
-                        pendingIndices.length === realMessages.length &&
-                        pendingIndices.length > 0
-                    ) {
-                        const updated = [...prev];
-                        pendingIndices.forEach((idx, i) => {
-                            updated[idx] = realMessages[i];
-                        });
-
-                        console.log(
-                            "✅ Đã thay thế tin nhắn tạm bằng tin nhắn thật"
-                        );
-                        setTimeout(() => scrollToBottom(true), 100);
-                        return updated;
-                    } else {
-                        const existingIds = new Set(
-                            prev.map((m) => m.message_id)
-                        );
-                        const newMessages = realMessages.filter(
-                            (msg) => !existingIds.has(msg.message_id)
-                        );
-
-                        if (newMessages.length === 0) return prev;
-
-                        console.log(
-                            `✅ Thêm ${newMessages.length} tin nhắn mới`
-                        );
-                        const updated = [...prev, ...newMessages];
-                        setTimeout(() => scrollToBottom(true), 100);
-                        return updated;
-                    }
-                });
-            } catch (error) {
-                console.error("❌ Lỗi xử lý new_message:", error);
-            }
+                if (
+                    pendingIndices.length === realMessages.length &&
+                    pendingIndices.length > 0
+                ) {
+                    const updated = [...prev];
+                    pendingIndices.forEach(
+                        (idx, i) => (updated[idx] = realMessages[i])
+                    );
+                    setTimeout(() => scrollToBottom(true), 100);
+                    return updated;
+                } else {
+                    const existingIds = new Set(prev.map((m) => m.message_id));
+                    const newMessages = realMessages.filter(
+                        (msg) => !existingIds.has(msg.message_id)
+                    );
+                    if (newMessages.length === 0) return prev;
+                    const updated = [...prev, ...newMessages];
+                    setTimeout(() => scrollToBottom(true), 100);
+                    return updated;
+                }
+            });
         };
 
         socket.on("new_message", handleNewMessage);
@@ -176,28 +213,25 @@ export default function ConversationDetail() {
         if (!socket || isNaN(conversationId)) return;
 
         const handleUserTyping = (data) => {
-            console.log("📝 Nhận user_typing:", data);
-
             if (Number(data.conversation_id) !== conversationId) return;
             if (data.user_id === currentUserId) return;
 
             setTypingUsers((prev) => {
                 const newSet = new Set(prev);
-                if (data.is_typing) newSet.add(data.user_id);
-                else newSet.delete(data.user_id);
+                data.is_typing
+                    ? newSet.add(data.user_id)
+                    : newSet.delete(data.user_id);
                 return newSet;
             });
 
-            if (data.is_typing) {
-                setTimeout(() => scrollToBottom(true), 100);
-            }
+            if (data.is_typing) setTimeout(() => scrollToBottom(true), 100);
         };
 
         socket.on("user_typing", handleUserTyping);
         return () => socket.off("user_typing", handleUserTyping);
     }, [socket, conversationId, currentUserId]);
 
-    // Tự động scroll khi có tin nhắn mới hoặc ảnh load
+    // Auto scroll khi có tin nhắn mới
     useEffect(() => {
         if (messages.length > 0) {
             scrollToBottom(true);
@@ -205,6 +239,42 @@ export default function ConversationDetail() {
             return () => clearTimeout(timer);
         }
     }, [messages]);
+
+    // Helper: lấy trạng thái user
+    const getUserStatus = (userId) => {
+        if (!userId)
+            return {
+                isOnline: false,
+                statusText: "Offline",
+                dotClass: "bg-gray-400",
+            };
+
+        const isOnline = onlineUsers.has(userId);
+        if (isOnline)
+            return {
+                isOnline: true,
+                statusText: "Đang hoạt động",
+                dotClass: "bg-green-500",
+            };
+
+        const lastActive = lastSeen.get(userId);
+        if (!lastActive)
+            return {
+                isOnline: false,
+                statusText: "Offline",
+                dotClass: "bg-gray-400",
+            };
+
+        const diffMin = Math.floor((Date.now() - lastActive) / 60000);
+        let statusText;
+        if (diffMin < 1) statusText = "Vừa mới hoạt động";
+        else if (diffMin < 60) statusText = `Hoạt động ${diffMin} phút trước`;
+        else if (diffMin < 1440)
+            statusText = `Hoạt động ${Math.floor(diffMin / 60)} giờ trước`;
+        else statusText = `Hoạt động ${Math.floor(diffMin / 1440)} ngày trước`;
+
+        return { isOnline: false, statusText, dotClass: "bg-gray-400" };
+    };
 
     // Lấy thông tin conversation
     useEffect(() => {
@@ -221,11 +291,12 @@ export default function ConversationDetail() {
 
                     if (found) {
                         const conv = found.conversation;
-                        let name, avatar;
+                        let name, avatar, otherUserId;
 
                         if (conv.conversation_type === "group") {
                             name = conv.name || "Nhóm chat";
                             avatar = conv.avatar_url;
+                            otherUserId = null;
                         } else {
                             const otherParticipant =
                                 conv.participants.find(
@@ -235,13 +306,14 @@ export default function ConversationDetail() {
                                 otherParticipant?.user.full_name ||
                                 "Người dùng ẩn danh";
                             avatar = otherParticipant?.user.avatar_url;
+                            otherUserId = otherParticipant?.user.user_id;
                         }
 
                         setCurrentConversation({
                             name,
                             avatar,
+                            otherUserId,
                             type: conv.conversation_type,
-                            isOnline: true,
                         });
                     }
                 }
@@ -265,7 +337,6 @@ export default function ConversationDetail() {
                     limit: LIMIT,
                     offset: 0,
                 });
-
                 if (response.success) {
                     const newMessages = response.data.reverse();
                     setMessages(newMessages);
@@ -275,7 +346,6 @@ export default function ConversationDetail() {
                 }
             } catch (err) {
                 setError("Lỗi kết nối server");
-                console.error(err);
             } finally {
                 setLoading(false);
             }
@@ -284,6 +354,7 @@ export default function ConversationDetail() {
         fetchMessages();
     }, [conversationId]);
 
+    // Load more messages
     const loadMoreMessages = async () => {
         if (loadingMore || !hasMore || loading) return;
 
@@ -325,6 +396,7 @@ export default function ConversationDetail() {
         }
     };
 
+    // Format time
     const formatMessageTime = (dateString) => {
         const date = new Date(dateString);
         if (isToday(date)) return format(date, "HH:mm");
@@ -332,6 +404,7 @@ export default function ConversationDetail() {
         return format(date, "dd/MM/yyyy");
     };
 
+    // Render reactions
     const renderReactions = (reactions) => {
         if (!reactions || reactions.length === 0) return null;
 
@@ -357,6 +430,7 @@ export default function ConversationDetail() {
         );
     };
 
+    // Handle reaction
     const handleReaction = (messageId, emoji) => {
         setMessages((prev) =>
             prev.map((msg) =>
@@ -378,21 +452,22 @@ export default function ConversationDetail() {
         setTimeout(() => scrollToBottom(true), 100);
     };
 
-    if (loading) {
+    if (loading)
         return (
             <div className="flex-1 flex items-center justify-center text-gray-500">
                 Đang tải...
             </div>
         );
-    }
-
-    if (error) {
+    if (error)
         return (
             <div className="flex-1 flex items-center justify-center text-red-500">
                 {error}
             </div>
         );
-    }
+
+    const userStatus = currentConversation?.otherUserId
+        ? getUserStatus(currentConversation.otherUserId)
+        : null;
 
     return (
         <main className="flex-1 flex flex-col bg-white h-full relative min-w-0">
@@ -403,20 +478,28 @@ export default function ConversationDetail() {
                             <Avatar
                                 src={currentConversation?.avatar}
                                 size="md"
-                                status={
-                                    currentConversation?.isOnline
-                                        ? "online"
-                                        : "offline"
-                                }
                             />
                             <div>
                                 <h3 className="text-slate-800 text-base font-bold leading-tight">
                                     {currentConversation?.name || "Đang tải..."}
                                 </h3>
-                                <p className="text-slate-500 text-xs font-medium">
-                                    {currentConversation?.isOnline
-                                        ? "Đang hoạt động"
-                                        : "Offline"}
+                                <p className="text-xs font-medium flex items-center gap-1.5 text-gray-500">
+                                    {currentConversation?.type === "group" ? (
+                                        <span>
+                                            {currentConversation?.participants
+                                                ?.length || 0}{" "}
+                                            thành viên
+                                        </span>
+                                    ) : userStatus ? (
+                                        <>
+                                            <span
+                                                className={`w-2 h-2 rounded-full inline-block ${userStatus.dotClass}`}
+                                            />
+                                            <span>{userStatus.statusText}</span>
+                                        </>
+                                    ) : (
+                                        <span>Đang tải...</span>
+                                    )}
                                 </p>
                             </div>
                         </div>

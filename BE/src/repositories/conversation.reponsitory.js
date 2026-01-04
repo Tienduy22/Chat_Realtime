@@ -320,6 +320,21 @@ const listConversation = async (user_id) => {
     }
 };
 
+const updateConversation = async (conversation_id, user_id, data) => {
+    try {
+        return await ConversationParticipant.update(
+            data,
+            {
+                where: {
+                    conversation_id: conversation_id,
+                    user_id: user_id,
+                },
+            }
+        );
+    } catch (error) {
+        throw error;
+    }
+};
 
 module.exports = {
     createNewConversation,
@@ -334,4 +349,5 @@ module.exports = {
     changeAvatar,
     changeNotification,
     listConversation,
+    updateConversation
 };

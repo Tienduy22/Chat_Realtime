@@ -418,6 +418,25 @@ const findById = async (conversation_id) => {
     }
 }
 
+const updateConversation = async (conversation_id, user_id, data) => {
+    try {
+        const conversation = await conversationReponsitory.findById(conversation_id)
+        if(!conversation) {
+            throw {
+                statusCode: 404,
+                message: "Cuộc trò chuyện không tồn tại"
+            }
+        }
+
+        await conversationReponsitory.updateConversation(conversation_id, user_id, data)
+        return {
+            message: "Thay đổi thông tin nhóm thành công"
+        }
+    } catch (error) {
+        throw error
+    }
+}
+
 module.exports = {
     createNewGroupConversation,
     createNewConversation,
@@ -431,5 +450,6 @@ module.exports = {
     changeNotification,
     AllMessageOfConversation,
     listConversation,
-    findById
+    findById,
+    updateConversation
 };
