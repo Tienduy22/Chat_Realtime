@@ -5,9 +5,8 @@ const userReponsitory = require("../repositories/user.reponsitory");
 const createMessage = async (req) => {
     try {
         const { conversation_id, sender_id } = req.body;
-        const conversation = await conversationReponsitory.findById(
-            conversation_id
-        );
+        const conversation =
+            await conversationReponsitory.findById(conversation_id);
         if (!conversation) {
             throw {
                 statusCode: 404,
@@ -66,7 +65,7 @@ const createMessage = async (req) => {
                 req.body.mention_ids.forEach(async (mention_id) => {
                     await messageReponsitory.mention(
                         message.message_id,
-                        mention_id
+                        mention_id,
                     );
                 });
             }
@@ -136,14 +135,14 @@ const createMessage = async (req) => {
 
         for (const message of messages) {
             const fullMessage = await messageReponsitory.fullMessage(
-                message.message_id
+                message.message_id,
             );
             result.push(fullMessage);
         }
 
         await messageReponsitory.incrementUnreadCount(
             conversation_id,
-            sender_id
+            sender_id,
         );
 
         // Socket
@@ -151,12 +150,12 @@ const createMessage = async (req) => {
         if (io) {
             const participants =
                 await conversationReponsitory.findAllMemberOfGroup(
-                    conversation_id
+                    conversation_id,
                 );
 
             const payload = {
                 conversation_id: conversation_id,
-                messages: result, 
+                messages: result,
                 sender: {
                     user_id: sender.user_id,
                     full_name: sender.full_name,
@@ -167,13 +166,13 @@ const createMessage = async (req) => {
             participants.forEach((member) => {
                 io.to(`user:${member.user_id}`).emit("new_message", payload);
                 console.log(
-                    `✅ Sent ${result.length} messages to user:${member.user_id}`
+                    `✅ Sent ${result.length} messages to user:${member.user_id}`,
                 );
             });
 
             io.to(`conversation:${conversation_id}`).emit(
                 "new_message",
-                payload
+                payload,
             );
         }
 
@@ -183,10 +182,9 @@ const createMessage = async (req) => {
     }
 };
 
-const markAsRead = async ({ conversation_id, message_id, user_id }) => {
-    const conversation = await conversationReponsitory.findById(
-        conversation_id
-    );
+const markAsRead = async ({ conversation_id, message_ids, user_id }) => {
+    const conversation =
+        await conversationReponsitory.findById(conversation_id);
     if (!conversation) {
         throw {
             statusCode: 404,
@@ -202,17 +200,9 @@ const markAsRead = async ({ conversation_id, message_id, user_id }) => {
         };
     }
 
-    const message = await messageReponsitory.findById(message_id);
-    if (!message) {
-        throw {
-            statusCode: 404,
-            message: "Message không tồn tại",
-        };
-    }
-
     const participant = await conversationReponsitory.findMemberOfGroup(
         conversation_id,
-        user_id
+        user_id,
     );
     if (!participant) {
         throw {
@@ -223,17 +213,21 @@ const markAsRead = async ({ conversation_id, message_id, user_id }) => {
 
     await messageReponsitory.updateUnreadCount(
         participant.participant_id,
-        message_id
+        message_ids[0],
     );
 
-    await messageReponsitory.markAsRead(message_id, user_id);
+    message_ids.forEach(async (message_id) => {
+        await messageReponsitory.markAsRead(user_id, message_id);
+    });
 
     const io = global.io;
     if (io) {
-        io.to(`conversation: ${conversation_id}`).emit("seem_message", {
+        io.to(`conversation:${conversation_id}`).emit("seem_message", {
             conversation_id: conversation_id,
             user_id: user_id,
-            last_message_id: message_id,
+            avatar_url: user.avatar_url,
+            full_name: user.full_name,
+            last_message_id: message_ids[0],
         });
     }
 
@@ -259,9 +253,8 @@ const deleteMessage = async (data) => {
             };
         }
         await messageReponsitory.deleteMessage(message_id);
-        const attachment = await messageReponsitory.findByIdAttachment(
-            message_id
-        );
+        const attachment =
+            await messageReponsitory.findByIdAttachment(message_id);
         if (!attachment) {
             throw {
                 statusCode: 404,
@@ -269,7 +262,7 @@ const deleteMessage = async (data) => {
             };
         }
         await messageReponsitory.deleteMessageAttachment(
-            attachment.attachment_id
+            attachment.attachment_id,
         );
         await messageReponsitory.deleteMessage(message_id);
 
@@ -352,23 +345,54 @@ const reactionMessage = async ({
             };
         }
 
-        const reaction = await messageReponsitory.reactionMessage(
-            emoji,
+        const existingReaction = await messageReponsitory.findReaction(
             message_id,
-            user_id
+            user_id,
         );
 
-        const io = global.io;
-        if (io) {
-            io.to(`conversation: ${conversation_id}`).emit("reaction_message", {
-                conversation_id: conversation_id,
-                user_id: user_id,
-                message_reaction: message_id,
-                reaction_id: reaction.reaction_id,
-                emoji: emoji,
-            });
-        }
+        let reaction
 
+        if (!existingReaction) {
+            reaction = await messageReponsitory.reactionMessage(
+                emoji,
+                message_id,
+                user_id,
+            );
+
+            const io = global.io;
+            if (io) {
+                io.to(`conversation:${conversation_id}`).emit(
+                    "reaction_message",
+                    {
+                        conversation_id: conversation_id,
+                        user_id: user_id,
+                        message_reaction: message_id,
+                        reaction_id: reaction.reaction_id,
+                        emoji: emoji,
+                    },
+                );
+            } else {
+                console.error("❌ global.io is undefined");
+            }
+        } else {
+            await messageReponsitory.removeReaction(existingReaction.reaction_id);
+
+            const io = global.io;
+            if (io) {
+                io.to(`conversation:${conversation_id}`).emit(
+                    "remove_reaction_message",
+                    {
+                        conversation_id: conversation_id,
+                        user_id: user_id,
+                        message_reaction: message_id,
+                        reaction_id: existingReaction.reaction_id,
+                        emoji: emoji,
+                    },
+                );
+            } else {
+                console.error("❌ global.io is undefined");
+            }
+        }
         return reaction;
     } catch (error) {
         throw error;

@@ -58,8 +58,9 @@ const editMessage = async (req, res, next) => {
 
 const reactionMessage = async (req, res, next) => {
     try {
+        console.log(req.body)
         const result = await messageService.reactionMessage(req.body);
-
+        
         return res.status(201).json({
             success: true,
             message: "Reaction tin nhắn thành công",

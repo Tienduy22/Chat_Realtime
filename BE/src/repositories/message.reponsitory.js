@@ -21,7 +21,7 @@ const createMessage = async (messageData) => {
 const createMessageAttachment = async (messageAttachmentData) => {
     try {
         const messageAttachment = await MessageAttachment.create(
-            messageAttachmentData
+            messageAttachmentData,
         );
         return messageAttachment;
     } catch (error) {
@@ -75,7 +75,7 @@ const updateUnreadCount = async (participant_id, last_read_message_id) => {
                 where: {
                     participant_id: participant_id,
                 },
-            }
+            },
         );
     } catch (error) {
         throw error;
@@ -115,7 +115,7 @@ const deleteMessage = async (message_id) => {
                 where: {
                     message_id: message_id,
                 },
-            }
+            },
         );
     } catch (error) {
         throw error;
@@ -146,7 +146,7 @@ const editMessage = async (content, message_id) => {
                 where: {
                     message_id: message_id,
                 },
-            }
+            },
         );
     } catch (error) {
         throw error;
@@ -175,6 +175,7 @@ const AllMessageOfConversation = async (conversation_id, limit, offset) => {
             },
             attributes: [
                 "message_id",
+                "conversation_id",
                 "content",
                 "sender_id",
                 "message_type",
@@ -192,7 +193,7 @@ const AllMessageOfConversation = async (conversation_id, limit, offset) => {
                         "full_name",
                         "avatar_url",
                     ],
-                    required: true, 
+                    required: true,
                 },
                 {
                     model: MessageAttachment,
@@ -204,7 +205,7 @@ const AllMessageOfConversation = async (conversation_id, limit, offset) => {
                         "created_at",
                     ],
                     required: false,
-                    separate: true, 
+                    separate: true,
                 },
                 {
                     model: MessageReaction,
@@ -213,11 +214,18 @@ const AllMessageOfConversation = async (conversation_id, limit, offset) => {
                     required: false,
                     separate: true,
                 },
+                {
+                    model: MessageReadReceipt,
+                    as: "readReceipts",
+                    attributes: ["receipt_id", "user_id", "read_at"],
+                    required: false,
+                    separate: true,
+                },
             ],
             limit,
             offset,
             order: [["created_at", "DESC"]],
-            subQuery: false, 
+            subQuery: false,
             raw: false,
         });
 
@@ -227,11 +235,12 @@ const AllMessageOfConversation = async (conversation_id, limit, offset) => {
     }
 };
 
-const markAsRead = async (message_id, user_id) => {
+const markAsRead = async (user_id, message_id) => {
     try {
         return await MessageReadReceipt.create({
             message_id: message_id,
             user_id: user_id,
+            read_at: new Date(),
         });
     } catch (error) {
         throw error;
@@ -242,13 +251,33 @@ const mention = async (message_id, user_id) => {
     try {
         return await MessageMention.create({
             message_id: message_id,
-            user_id: user_id
-        })
+            user_id: user_id,
+        });
     } catch (error) {
-        throw error
+        throw error;
     }
-}
+};
 
+const findReaction = async (message_id, user_id) => {
+    try {
+        return await MessageReaction.findOne({
+            where: {
+                message_id: message_id,
+                user_id: user_id,
+            },
+        });
+    } catch (error) {
+        throw error;
+    }
+};
+
+const removeReaction = async (reaction_id) => {
+    try {
+        return await MessageReaction.destroy({ where: { reaction_id: reaction_id } });
+    } catch (error) {
+        throw error;
+    }
+};
 module.exports = {
     createMessage,
     createMessageAttachment,
@@ -263,5 +292,7 @@ module.exports = {
     reactionMessage,
     AllMessageOfConversation,
     markAsRead,
-    mention
+    mention,
+    findReaction,
+    removeReaction,
 };

@@ -4,7 +4,7 @@ const jwt = require("../utils/jwt");
 const offlineTimers = new Map();
 
 // Map toàn cục để lưu online users và lastSeen (user_id → timestamp)
-const onlineUsers = new Map(); // Ví dụ: user_id → Date.now()
+const onlineUsers = new Map(); 
 
 const messageHandlers = (io, socket) => {
     console.log("✅ User connected:", socket.id);
@@ -62,7 +62,7 @@ const messageHandlers = (io, socket) => {
         onlineUsers.set(user_id, Date.now());
         io.emit("user_activity", { user_id: user_id });
 
-        socket.to(`conversation:${conversation_id}`).emit("user_joined", {
+        io.to(`conversation:${conversation_id}`).emit("user_joined", {
             conversation_id: conversation_id,
             user_id: user_id,
         });
