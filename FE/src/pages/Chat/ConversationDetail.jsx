@@ -187,14 +187,14 @@ export default function ConversationDetail() {
                 ) {
                     const updated = [...prev];
                     pendingIndices.forEach(
-                        (idx, i) => (updated[idx] = realMessages[i])
+                        (idx, i) => (updated[idx] = realMessages[i]),
                     );
                     setTimeout(() => scrollToBottom(true), 100);
                     return updated;
                 } else {
                     const existingIds = new Set(prev.map((m) => m.message_id));
                     const newMessages = realMessages.filter(
-                        (msg) => !existingIds.has(msg.message_id)
+                        (msg) => !existingIds.has(msg.message_id),
                     );
                     if (newMessages.length === 0) return prev;
                     const updated = [...prev, ...newMessages];
@@ -231,14 +231,17 @@ export default function ConversationDetail() {
         return () => socket.off("user_typing", handleUserTyping);
     }, [socket, conversationId, currentUserId]);
 
+    const previousMessagesLengthRef = useRef(0);
     // Auto scroll khi có tin nhắn mới
     useEffect(() => {
-        if (messages.length > 0) {
+        if (messages.length > previousMessagesLengthRef.current) {
             scrollToBottom(true);
             const timer = setTimeout(() => scrollToBottom(true), 500);
+            previousMessagesLengthRef.current = messages.length;
             return () => clearTimeout(timer);
         }
-    }, [messages]);
+        previousMessagesLengthRef.current = messages.length;
+    }, [messages.length]);
 
     // Helper: lấy trạng thái user
     const getUserStatus = (userId) => {
@@ -286,7 +289,8 @@ export default function ConversationDetail() {
                 if (response.success) {
                     const found = response.data.find(
                         (item) =>
-                            item.conversation.conversation_id === conversationId
+                            item.conversation.conversation_id ===
+                            conversationId,
                     );
 
                     if (found) {
@@ -300,7 +304,7 @@ export default function ConversationDetail() {
                         } else {
                             const otherParticipant =
                                 conv.participants.find(
-                                    (p) => p.user.user_id !== currentUserId
+                                    (p) => p.user.user_id !== currentUserId,
                                 ) || conv.participants[0];
                             name =
                                 otherParticipant?.user.full_name ||
@@ -404,53 +408,93 @@ export default function ConversationDetail() {
         return format(date, "dd/MM/yyyy");
     };
 
-    // Render reactions
-    const renderReactions = (reactions) => {
-        if (!reactions || reactions.length === 0) return null;
+    // Socket: realtime reaction
+    useEffect(() => {
+        if (!socket || !conversationId) return;
 
-        const grouped = reactions.reduce((acc, r) => {
-            acc[r.emoji] = (acc[r.emoji] || 0) + 1;
-            return acc;
-        }, {});
+        const handleAddReaction = (data) => {
+            const {
+                conversation_id,
+                message_reaction: message_id,
+                user_id,
+                emoji,
+                reaction_id,
+            } = data;
 
-        return (
-            <div className="flex gap-1 mt-1">
-                {Object.entries(grouped).map(([emoji, count]) => (
-                    <div
-                        key={emoji}
-                        className="bg-white border border-gray-300 px-2 py-0.5 rounded-full text-xs flex items-center gap-1 shadow-sm"
-                    >
-                        <span>{emoji}</span>
-                        {count > 1 && (
-                            <span className="text-gray-600">{count}</span>
-                        )}
-                    </div>
-                ))}
-            </div>
-        );
-    };
+            if (Number(conversation_id) !== conversationId) return;
 
-    // Handle reaction
-    const handleReaction = (messageId, emoji) => {
-        setMessages((prev) =>
-            prev.map((msg) =>
-                msg.message_id === messageId
-                    ? {
-                          ...msg,
-                          reactions: [
-                              ...(msg.reactions || []),
-                              {
-                                  reaction_id: Date.now(),
-                                  user_id: currentUserId,
-                                  emoji,
-                              },
-                          ],
-                      }
-                    : msg
-            )
-        );
-        setTimeout(() => scrollToBottom(true), 100);
-    };
+            setMessages((prevMessages) => {
+                return prevMessages.map((currentMessage) => {
+                    if (currentMessage.message_id !== message_id) {
+                        return currentMessage;
+                    }
+
+                    const oldReactions = currentMessage.reactions || []; 
+
+                    const alreadyExists = oldReactions.some((reaction) => {
+                        return (
+                            reaction.user_id === user_id &&
+                            reaction.emoji === emoji
+                        );
+                    });
+
+                    if (alreadyExists) {
+                        return currentMessage;
+                    }
+
+                    const newReactions = [
+                        ...oldReactions, 
+                        { reaction_id, user_id, emoji }, 
+                    ];
+
+                    return {
+                        ...currentMessage,
+                        reactions: newReactions, 
+                    };
+                });
+            });
+        };
+
+        const handleRemoveReaction = (data) => {
+            const {
+                conversation_id,
+                message_reaction: message_id,
+                user_id,
+                emoji,
+            } = data;
+
+            if (Number(conversation_id) !== conversationId) return;
+
+            setMessages((prevMessages) => {
+                return prevMessages.map((currentMessage) => {
+                    if (currentMessage.message_id !== message_id) {
+                        return currentMessage;
+                    }
+
+                    const oldReactions = currentMessage.reactions || [];
+                    const newReactions = oldReactions.filter((reaction) => {
+                        return !(
+                            reaction.user_id === user_id &&
+                            reaction.emoji === emoji
+                        );
+                    });
+
+                    return {
+                        ...currentMessage,
+                        reactions: newReactions,
+                    };
+                });
+            });
+        };
+
+        socket.on("reaction_message", handleAddReaction);
+        socket.on("remove_reaction_message", handleRemoveReaction);
+
+        return () => {
+            socket.off("reaction_message", handleAddReaction);
+            socket.off("remove_reaction_message", handleRemoveReaction);
+        };
+    }, [socket, conversationId]);
 
     if (loading)
         return (
@@ -571,8 +615,6 @@ export default function ConversationDetail() {
                                         isMe={isMe}
                                         showAvatar={showAvatar}
                                         formatMessageTime={formatMessageTime}
-                                        renderReactions={renderReactions}
-                                        handleReaction={handleReaction}
                                     />
                                 );
                             })
@@ -616,6 +658,7 @@ export default function ConversationDetail() {
                             setMessages((prev) => [...prev, ...optimisticMsgs]);
                             setTimeout(() => scrollToBottom(true), 100);
                         }}
+                        messages={messages}
                         socket={socket}
                     />
                 </div>

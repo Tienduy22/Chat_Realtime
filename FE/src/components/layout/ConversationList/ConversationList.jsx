@@ -103,7 +103,6 @@ const ConversationList = () => {
         if (!messages || messages.length === 0) return "Chưa có tin nhắn";
 
         const lastMsg = messages[0];
-        console.log(messages);
         const sender = lastMsg.sender;
 
         let senderName = "Ai đó";

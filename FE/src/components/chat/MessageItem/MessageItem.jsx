@@ -1,6 +1,10 @@
-// src/components/chat/MessageItem.jsx
-import React, { useState } from "react";
+
+import React, { useState, useEffect } from "react";
 import Avatar from "../../common/Avatar/Avatar";
+import { useSocket } from "../../../context/SocketContext";
+import { reactionMessage } from "../../../services/message.service";
+
+const QUICK_EMOJIS = ["❤️", "😂", "😮", "👍", "😢", "👎"];
 
 const MessageItem = ({
     msg,
@@ -10,68 +14,135 @@ const MessageItem = ({
     isMe,
     showAvatar,
     formatMessageTime,
-    renderReactions,
-    handleReaction,
 }) => {
+    const { socket } = useSocket();
+
     const [showQuickReaction, setShowQuickReaction] = useState(false);
+    const [localReactions, setLocalReactions] = useState(msg.reactions || []);
+
+    // Đồng bộ reactions từ props → state local (khi message thay đổi từ server)
+    useEffect(() => {
+        setLocalReactions(msg.reactions || []);
+    }, [msg.reactions]);
 
     const hasText = msg.content && msg.content.trim() !== "";
     const hasAttachment = msg.attachments && msg.attachments.length > 0;
 
+    const handleAddReaction = async (emoji) => {
+        if (!socket || !msg.message_id) return;
+
+        // Optimistic update ngay lập tức
+        setLocalReactions((prev) => {
+            // Kiểm tra xem user đã react emoji này chưa
+            const alreadyReacted = prev.some(
+                (r) => r.user_id === currentUserId && r.emoji === emoji,
+            );
+
+            if (alreadyReacted) {
+                // Nếu đã react → toggle (bỏ reaction)
+                return prev.filter(
+                    (r) => !(r.user_id === currentUserId && r.emoji === emoji),
+                );
+            } else {
+                // Thêm reaction mới (optimistic)
+                return [
+                    ...prev,
+                    {
+                        reaction_id: `temp-${Date.now()}`,
+                        user_id: currentUserId,
+                        emoji,
+                    },
+                ];
+            }
+        });
+
+        try {
+            const response = await reactionMessage(
+                msg.conversation_id,
+                currentUserId,
+                msg.message_id,
+                emoji,
+            );
+
+            if (response.success && response.data?.reactions) {
+                setLocalReactions(response.data.reactions);
+            }
+        } catch (error) {
+            console.error("Lỗi reaction:", error);
+            setLocalReactions(msg.reactions || []);
+        }
+
+        setShowQuickReaction(false);
+    };
+
+    const renderReactions = () => {
+        if (!localReactions || localReactions.length === 0) return null;
+
+        const grouped = localReactions.reduce((acc, r) => {
+            acc[r.emoji] = (acc[r.emoji] || 0) + 1;
+            return acc;
+        }, {});
+
+        return (
+            <div className="flex gap-1 mt-1 flex-wrap">
+                {Object.entries(grouped).map(([emoji, count]) => (
+                    <div
+                        key={emoji}
+                        className="bg-white border border-gray-300 px-2 py-0.5 rounded-full text-xs flex items-center gap-1 shadow-sm hover:bg-gray-50 cursor-pointer"
+                        onClick={() => handleAddReaction(emoji)} // cho phép click để toggle
+                    >
+                        <span>{emoji}</span>
+                        {count > 1 && (
+                            <span className="text-gray-600">{count}</span>
+                        )}
+                    </div>
+                ))}
+            </div>
+        );
+    };
+
     const renderAttachment = (attachment) => {
         const url = attachment.file_url;
         const name = attachment.file_name || "file";
-
         const isImage =
-            url.startsWith("blob:") ||
-            url.includes("/image/") ||
-            /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(name);
-
-        const isVideo =
-            url.includes("/video/") ||
-            /\.(mp4|webm|ogg|mov)$/i.test(name);
+            /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(url) ||
+            url.startsWith("blob:");
+        const isVideo = /\.(mp4|webm|ogg|mov)$/i.test(url);
 
         if (isImage) {
             return (
-                <div className="relative inline-block">
-                    <img
-                        src={url}
-                        alt={name}
-                        className="max-w-sm w-full rounded-lg shadow-md object-contain"
-                        style={{ maxHeight: "500px" }}
-                        loading="lazy"
-                    />
-                </div>
+                <img
+                    src={url}
+                    alt={name}
+                    className="max-w-sm w-full rounded-lg shadow-md object-contain"
+                    style={{ maxHeight: "500px" }}
+                    loading="lazy"
+                />
             );
         }
-
         if (isVideo) {
             return (
-                <div className="relative">
-                    <video
-                        controls
-                        className="max-w-sm w-full rounded-lg shadow-md object-contain bg-black"
-                        style={{ maxHeight: "400px" }}
-                    >
-                        <source src={url} type="video/mp4" />
-                        Trình duyệt không hỗ trợ video.
-                    </video>
-                </div>
+                <video
+                    controls
+                    className="max-w-sm w-full rounded-lg shadow-md bg-black"
+                    style={{ maxHeight: "400px" }}
+                >
+                    <source src={url} type="video/mp4" />
+                </video>
             );
         }
-
         return (
             <a
                 href={url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-3 bg-gray-100 p-4 rounded-lg hover:bg-gray-200 transition shadow-sm"
+                className="flex items-center gap-3 bg-gray-100 p-4 rounded-lg hover:bg-gray-200"
             >
                 <span className="material-symbols-outlined text-5xl text-gray-600">
                     description
                 </span>
                 <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-800 truncate">{name}</p>
+                    <p className="text-sm font-medium truncate">{name}</p>
                     <p className="text-xs text-gray-500">Nhấn để tải xuống</p>
                 </div>
             </a>
@@ -90,8 +161,12 @@ const MessageItem = ({
                 <div className="w-10 shrink-0" />
             )}
 
-            <div className={`flex flex-col gap-1 ${isMe ? "items-end" : ""} relative`}>
-                <div className={`flex items-baseline gap-2 ${isMe ? "flex-row-reverse" : ""}`}>
+            <div
+                className={`flex flex-col gap-1 ${isMe ? "items-end" : ""} relative`}
+            >
+                <div
+                    className={`flex items-baseline gap-2 ${isMe ? "flex-row-reverse" : ""}`}
+                >
                     <span className="text-slate-800 text-sm font-bold">
                         {isMe ? "Bạn" : msg.sender?.full_name || "Người dùng"}
                     </span>
@@ -101,15 +176,19 @@ const MessageItem = ({
                 </div>
 
                 <div className="flex flex-col gap-2 relative">
+                    {/* Quick reaction bar */}
                     {!msg.isPending && showQuickReaction && (
                         <div
-                            className={`absolute ${isMe ? "-top-12 right-0" : "-top-12 left-0"} flex items-center gap-1 bg-white rounded-full shadow-lg px-3 py-1.5 border border-gray-200 z-10`}
+                            className={`absolute ${isMe ? "-top-12 right-0" : "-top-12 left-0"} 
+                         flex items-center gap-1.5 bg-white rounded-full shadow-xl px-3 py-2 
+                         border border-gray-200 z-20 animate-fade-in`}
                         >
-                            {["❤️", "😂", "😮", "👍", "😢", "👎"].map((emoji) => (
+                            {QUICK_EMOJIS.map((emoji) => (
                                 <button
                                     key={emoji}
-                                    onClick={() => handleReaction(msg.message_id, emoji)}
-                                    className="text-2xl hover:scale-125 transition-transform duration-200"
+                                    onClick={() => handleAddReaction(emoji)}
+                                    className="text-2xl hover:scale-125 transition-transform duration-150 p-1"
+                                    title="React"
                                 >
                                     {emoji}
                                 </button>
@@ -117,6 +196,7 @@ const MessageItem = ({
                         </div>
                     )}
 
+                    {/* Nội dung tin nhắn */}
                     {hasText && (
                         <div
                             className={`p-3 rounded-2xl text-sm leading-relaxed shadow-sm max-w-md ${
@@ -129,18 +209,23 @@ const MessageItem = ({
                         </div>
                     )}
 
+                    {/* Attachments */}
                     {hasAttachment &&
                         msg.attachments.map((att, i) => (
-                            <div key={i} className="max-w-sm">
+                            <div key={i} className="max-w-sm mt-1.5">
                                 {renderAttachment(att)}
                             </div>
                         ))}
 
-                    {renderReactions(msg.reactions)}
+                    {/* Hiển thị reactions */}
+                    {renderReactions()}
 
+                    {/* Pending indicator */}
                     {msg.isPending && (
-                        <div className={`absolute -bottom-5 ${isMe ? "right-0" : "left-0"} flex items-center gap-1 text-xs text-gray-500`}>
-                            <div className="w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                        <div
+                            className={`absolute -bottom-5 ${isMe ? "right-0" : "left-0"} flex items-center gap-1.5 text-xs text-gray-500`}
+                        >
+                            <div className="w-3 h-3 border-2 border-gray-400 border-t-blue-500 rounded-full animate-spin" />
                             <span>Đang gửi...</span>
                         </div>
                     )}

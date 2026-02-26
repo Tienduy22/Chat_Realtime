@@ -9,7 +9,7 @@ export const fullMessage = async ({
         const response = await axios.get(
             `http://localhost:5000/api/conversation/${conversation_id}`,
             {
-                params: { limit, offset }, // gửi query params
+                params: { limit, offset }, 
                 withCredentials: true,
             }
         );
@@ -38,3 +38,30 @@ export const createMessage = async (formData) => {
         throw error;
     }
 };
+
+export const markAsRead = async (conversationId, lastUnreadId, currentUserId) => {
+    try {
+        const response = await axios.post(
+            "http://localhost:5000/api/message/seem_message",
+            { conversation_id: conversationId, message_ids: lastUnreadId, user_id: currentUserId }
+        );
+        return response.data; 
+    } catch (error) {
+        console.error("Lỗi server:", error);
+        throw error;
+    }
+}
+
+
+export const reactionMessage = async (conversation_id, user_id, message_id, emoji) => {
+    try {
+        const response = await axios.post(
+            "http://localhost:5000/api/message/reaction_message",
+            { conversation_id, message_id, user_id, emoji }
+        );
+        return response.data; 
+    } catch (error) {
+        console.error("Lỗi server:", error);
+        throw error;
+    }
+}

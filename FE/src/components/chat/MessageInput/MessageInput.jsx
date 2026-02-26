@@ -4,7 +4,7 @@ import Picker from "@emoji-mart/react";
 import data from "@emoji-mart/data";
 import { Grid } from "@giphy/react-components";
 import { GiphyFetch } from "@giphy/js-fetch-api";
-import { createMessage } from "../../../services/message.service";
+import { createMessage, markAsRead } from "../../../services/message.service";
 import { useSelector } from "react-redux";
 
 const gf = new GiphyFetch("sXpGFDGZs0Dv1mmNFvYaGUvYwKX0PWIh");
@@ -16,6 +16,7 @@ const MessageInput = ({
     conversationId,
     currentUserId,
     socket,
+    messages = [],
 }) => {
     const [selectedFiles, setSelectedFiles] = useState([]);
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -29,22 +30,30 @@ const MessageInput = ({
     const gifSearchInputRef = useRef(null);
     const textareaRef = useRef(null);
     const typingTimeoutRef = useRef(null);
+    const hasMarkedRead = useRef(false);
 
     const user = useSelector((state) => state.user);
 
     useEffect(() => {
         const handleClickOutside = (event) => {
-            if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target)) {
+            if (
+                emojiPickerRef.current &&
+                !emojiPickerRef.current.contains(event.target)
+            ) {
                 setShowEmojiPicker(false);
             }
-            if (gifPickerRef.current && !gifPickerRef.current.contains(event.target)) {
+            if (
+                gifPickerRef.current &&
+                !gifPickerRef.current.contains(event.target)
+            ) {
                 setShowGifPicker(false);
                 setGifSearchQuery("");
             }
         };
 
         document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
+        return () =>
+            document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
     useEffect(() => {
@@ -64,8 +73,12 @@ const MessageInput = ({
 
         if (value.trim().length > 0) {
             emitTyping(true);
-            if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-            typingTimeoutRef.current = setTimeout(() => emitTyping(false), 1500);
+            if (typingTimeoutRef.current)
+                clearTimeout(typingTimeoutRef.current);
+            typingTimeoutRef.current = setTimeout(
+                () => emitTyping(false),
+                1500
+            );
         } else {
             emitTyping(false);
         }
@@ -114,7 +127,11 @@ const MessageInput = ({
                 optimisticMessages.push({
                     message_id: tempIdBase + idx,
                     content: messageInput.trim(),
-                    message_type: item.type.startsWith("image/") ? "image" : item.type.startsWith("video/") ? "video" : "file",
+                    message_type: item.type.startsWith("image/")
+                        ? "image"
+                        : item.type.startsWith("video/")
+                          ? "video"
+                          : "file",
                     created_at: new Date().toISOString(),
                     sender_id: currentUserId,
                     sender: {
@@ -122,7 +139,9 @@ const MessageInput = ({
                         full_name: user?.full_name || "Bạn",
                         avatar_url: user?.avatar_url || "",
                     },
-                    attachments: [{ file_url: item.url, file_name: item.name || "file" }],
+                    attachments: [
+                        { file_url: item.url, file_name: item.name || "file" },
+                    ],
                     isPending: true,
                 });
             });
@@ -153,7 +172,8 @@ const MessageInput = ({
         const formData = new FormData();
         formData.append("conversation_id", conversationId);
         formData.append("sender_id", currentUserId);
-        if (messageInput.trim()) formData.append("content", messageInput.trim());
+        if (messageInput.trim())
+            formData.append("content", messageInput.trim());
         selectedFiles.forEach((item) => formData.append("files", item.file));
 
         const tempContent = messageInput;
@@ -171,7 +191,8 @@ const MessageInput = ({
 
     useEffect(() => {
         return () => {
-            if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+            if (typingTimeoutRef.current)
+                clearTimeout(typingTimeoutRef.current);
         };
     }, []);
 
@@ -214,6 +235,59 @@ const MessageInput = ({
         }
     };
 
+    const getAllUnreadMessageIds = () => {
+        if (!Array.isArray(messages) || messages.length === 0) return [];
+
+        const unreadIds = [];
+
+        for (let i = messages.length - 1; i >= 0; i--) {
+            const msg = messages[i];
+
+            if (
+                msg.sender_id !== currentUserId && 
+                Array.isArray(msg.readReceipts) &&
+                msg.readReceipts.length === 0 
+            ) {
+                unreadIds.push(msg.message_id);
+            }
+        }
+
+        return unreadIds; 
+    };
+
+    // Hàm gọi API mark as read
+    const handleMarkAsRead = async () => {
+        if (hasMarkedRead.current) return;
+
+        const lastUnreadId = getAllUnreadMessageIds();
+
+        if (!lastUnreadId) {
+            console.log("Không có tin nhắn chưa đọc");
+            return;
+        }
+
+        try {
+            hasMarkedRead.current = true;
+            console.log("Đánh dấu đã đọc tin nhắn ID:", lastUnreadId);
+            await markAsRead(conversationId, lastUnreadId, currentUserId);
+
+            console.log("Đã gửi yêu cầu đánh dấu đã đọc thành công!");
+        } catch (error) {
+            console.error("Lỗi khi đánh dấu đã đọc:", error);
+            hasMarkedRead.current = false;
+        }
+    };
+
+    // Focus vào textarea → đánh dấu đã đọc
+    const handleTextareaFocus = () => {
+        handleMarkAsRead();
+    };
+
+    // Reset khi chuyển cuộc trò chuyện
+    useEffect(() => {
+        hasMarkedRead.current = false;
+    }, [conversationId]);
+
     return (
         <div className="p-6 pt-2 shrink-0 bg-white border-t border-gray-200 relative">
             {selectedFiles.length > 0 && (
@@ -222,16 +296,30 @@ const MessageInput = ({
                         <div
                             key={index}
                             className="relative group bg-gray-100 rounded-xl overflow-hidden shadow-md w-28 h-28 cursor-pointer"
-                            onClick={() => item.type.startsWith("image/") && setPreviewModalUrl(item.url)}
+                            onClick={() =>
+                                item.type.startsWith("image/") &&
+                                setPreviewModalUrl(item.url)
+                            }
                         >
                             {item.type.startsWith("image/") ? (
-                                <img src={item.url} alt={item.name} className="w-full h-full object-cover" />
+                                <img
+                                    src={item.url}
+                                    alt={item.name}
+                                    className="w-full h-full object-cover"
+                                />
                             ) : item.type.startsWith("video/") ? (
-                                <video src={item.url} className="w-full h-full object-cover" />
+                                <video
+                                    src={item.url}
+                                    className="w-full h-full object-cover"
+                                />
                             ) : (
                                 <div className="w-full h-full flex flex-col items-center justify-center bg-gray-200">
-                                    <span className="material-symbols-outlined text-5xl text-gray-500">description</span>
-                                    <p className="text-xs text-gray-600 px-2 text-center truncate mt-1">{item.name}</p>
+                                    <span className="material-symbols-outlined text-5xl text-gray-500">
+                                        description
+                                    </span>
+                                    <p className="text-xs text-gray-600 px-2 text-center truncate mt-1">
+                                        {item.name}
+                                    </p>
                                 </div>
                             )}
                             <button
@@ -274,6 +362,7 @@ const MessageInput = ({
                     value={messageInput}
                     onChange={handleInputChange}
                     onKeyDown={handleKeyDown}
+                    onFocus={handleTextareaFocus}
                     placeholder="Nhập tin nhắn..."
                     className="w-full bg-transparent border-none focus:outline-none text-slate-800 placeholder:text-slate-500/60 resize-none h-12 py-3 px-4 scrollbar-thin"
                 />
@@ -299,7 +388,9 @@ const MessageInput = ({
 
                         <div className="relative" ref={emojiPickerRef}>
                             <button
-                                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                                onClick={() =>
+                                    setShowEmojiPicker(!showEmojiPicker)
+                                }
                                 className="size-9 rounded-lg hover:bg-gray-100 hover:text-[#135bec] transition-all flex items-center justify-center"
                             >
                                 <span className="material-symbols-outlined text-xl text-slate-500">
@@ -339,7 +430,9 @@ const MessageInput = ({
                                         ref={gifSearchInputRef}
                                         type="text"
                                         value={gifSearchQuery}
-                                        onChange={(e) => setGifSearchQuery(e.target.value)}
+                                        onChange={(e) =>
+                                            setGifSearchQuery(e.target.value)
+                                        }
                                         placeholder="Tìm GIF..."
                                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#135bec] mb-3"
                                     />
@@ -351,8 +444,15 @@ const MessageInput = ({
                                             gutter={6}
                                             fetchGifs={(offset) =>
                                                 gifSearchQuery
-                                                    ? gf.search({ q: gifSearchQuery, offset, limit: 21 })
-                                                    : gf.trending({ offset, limit: 21 })
+                                                    ? gf.search({
+                                                          q: gifSearchQuery,
+                                                          offset,
+                                                          limit: 21,
+                                                      })
+                                                    : gf.trending({
+                                                          offset,
+                                                          limit: 21,
+                                                      })
                                             }
                                             onGifClick={handleGifSelect}
                                             noLink={true}
@@ -381,11 +481,16 @@ const MessageInput = ({
 
                         <button
                             onClick={handleSend}
-                            disabled={!messageInput.trim() && selectedFiles.length === 0}
+                            disabled={
+                                !messageInput.trim() &&
+                                selectedFiles.length === 0
+                            }
                             className="px-4 h-9 rounded-lg bg-[#135bec] disabled:bg-gray-300 text-white font-medium flex items-center gap-2 hover:bg-blue-700 disabled:hover:bg-gray-300 transition-all"
                         >
                             <span>Gửi</span>
-                            <span className="material-symbols-outlined text-lg">send</span>
+                            <span className="material-symbols-outlined text-lg">
+                                send
+                            </span>
                         </button>
                     </div>
                 </div>
