@@ -11,7 +11,7 @@ router.post("/seem_message", messageController.markAsRead)
 
 router.delete("/delete_message", messageController.deleteMessage)
 
-router.patch("/edit_message", messageController.editMessage)
+router.post("/edit_message", messageController.editMessage)
 
 router.post("/reaction_message", messageController.reactionMessage)
 

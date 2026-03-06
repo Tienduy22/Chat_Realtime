@@ -314,7 +314,7 @@ const editMessage = async ({
 
         const io = global.io;
         if (io) {
-            io.to(`conversation: ${conversation_id}`).emit("edit_message", {
+            io.to(`conversation:${conversation_id}`).emit("edit_message", {
                 conversation_id: conversation_id,
                 user_id: user_id,
                 message_edit: message_id,

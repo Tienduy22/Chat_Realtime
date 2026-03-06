@@ -1,4 +1,3 @@
-// src/pages/chat/ConversationDetail.jsx
 import React, { useState, useEffect, useRef } from "react";
 import { format, isToday, isYesterday } from "date-fns";
 import Avatar from "../../components/common/Avatar/Avatar";
@@ -10,6 +9,7 @@ import MessageInput from "../../components/chat/MessageInput/MessageInput";
 import MessageItem from "../../components/chat/MessageItem/MessageItem";
 import { useSocket } from "../../context/SocketContext";
 import { useParams } from "react-router-dom";
+import { useMessageSocket } from "../../hooks/useMessageSocket";
 
 export default function ConversationDetail() {
     const { conversationId: convIdParam } = useParams();
@@ -29,7 +29,6 @@ export default function ConversationDetail() {
     const [hasMore, setHasMore] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
 
-    // Trạng thái online/offline
     const [onlineUsers, setOnlineUsers] = useState(new Set());
     const [lastSeen, setLastSeen] = useState(new Map());
 
@@ -40,14 +39,15 @@ export default function ConversationDetail() {
     const currentUserId = user?.user_id;
 
     const LIMIT = 20;
-    const OFFLINE_TIMEOUT = 5 * 60 * 1000; // 5 phút
+    const OFFLINE_TIMEOUT = 5 * 60 * 1000;
+
+    useMessageSocket(socket, conversationId, currentUserId, setMessages);
 
     // Scroll functions
     const scrollToBottom = (immediate = false) => {
         if (messagesContainerRef.current) {
             if (immediate) {
-                messagesContainerRef.current.scrollTop =
-                    messagesContainerRef.current.scrollHeight;
+                messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
             } else {
                 messagesContainerRef.current.scrollTo({
                     top: messagesContainerRef.current.scrollHeight,
@@ -60,8 +60,7 @@ export default function ConversationDetail() {
     const maintainScrollPosition = () => {
         if (messagesContainerRef.current) {
             const newScrollHeight = messagesContainerRef.current.scrollHeight;
-            const scrollDiff =
-                newScrollHeight - previousScrollHeightRef.current;
+            const scrollDiff = newScrollHeight - previousScrollHeightRef.current;
             messagesContainerRef.current.scrollTop += scrollDiff;
         }
     };
@@ -87,7 +86,7 @@ export default function ConversationDetail() {
         };
     }, [socket, conversationId]);
 
-    // Cleanup offline users định kỳ
+    // Cleanup offline users
     useEffect(() => {
         const interval = setInterval(() => {
             const now = Date.now();
@@ -149,65 +148,6 @@ export default function ConversationDetail() {
         };
     }, [socket]);
 
-    // Realtime new message
-    useEffect(() => {
-        if (!socket || isNaN(conversationId)) return;
-
-        const handleNewMessage = (data) => {
-            if (Number(data.conversation_id) !== conversationId) return;
-            if (!data.messages || data.messages.length === 0) return;
-
-            const senderInfo =
-                data.sender && data.sender.user_id
-                    ? {
-                          user_id: data.sender.user_id,
-                          full_name: data.sender.full_name || "",
-                          avatar_url: data.sender.avatar_url || "",
-                      }
-                    : null;
-
-            const realMessages = data.messages
-                .filter((msg) => msg && msg.message_id)
-                .map((msg) => ({
-                    ...msg,
-                    sender: senderInfo || { user_id: msg.sender_id },
-                    isPending: false,
-                }));
-
-            setMessages((prev) => {
-                const pendingIndices = [];
-                for (let i = prev.length - 1; i >= 0; i--) {
-                    if (prev[i].isPending) pendingIndices.unshift(i);
-                    else break;
-                }
-
-                if (
-                    pendingIndices.length === realMessages.length &&
-                    pendingIndices.length > 0
-                ) {
-                    const updated = [...prev];
-                    pendingIndices.forEach(
-                        (idx, i) => (updated[idx] = realMessages[i]),
-                    );
-                    setTimeout(() => scrollToBottom(true), 100);
-                    return updated;
-                } else {
-                    const existingIds = new Set(prev.map((m) => m.message_id));
-                    const newMessages = realMessages.filter(
-                        (msg) => !existingIds.has(msg.message_id),
-                    );
-                    if (newMessages.length === 0) return prev;
-                    const updated = [...prev, ...newMessages];
-                    setTimeout(() => scrollToBottom(true), 100);
-                    return updated;
-                }
-            });
-        };
-
-        socket.on("new_message", handleNewMessage);
-        return () => socket.off("new_message", handleNewMessage);
-    }, [socket, conversationId]);
-
     // Typing indicator
     useEffect(() => {
         if (!socket || isNaN(conversationId)) return;
@@ -243,30 +183,17 @@ export default function ConversationDetail() {
         previousMessagesLengthRef.current = messages.length;
     }, [messages.length]);
 
-    // Helper: lấy trạng thái user
     const getUserStatus = (userId) => {
         if (!userId)
-            return {
-                isOnline: false,
-                statusText: "Offline",
-                dotClass: "bg-gray-400",
-            };
+            return { isOnline: false, statusText: "Offline", dotClass: "bg-gray-400" };
 
         const isOnline = onlineUsers.has(userId);
         if (isOnline)
-            return {
-                isOnline: true,
-                statusText: "Đang hoạt động",
-                dotClass: "bg-green-500",
-            };
+            return { isOnline: true, statusText: "Đang hoạt động", dotClass: "bg-green-500" };
 
         const lastActive = lastSeen.get(userId);
         if (!lastActive)
-            return {
-                isOnline: false,
-                statusText: "Offline",
-                dotClass: "bg-gray-400",
-            };
+            return { isOnline: false, statusText: "Offline", dotClass: "bg-gray-400" };
 
         const diffMin = Math.floor((Date.now() - lastActive) / 60000);
         let statusText;
@@ -283,16 +210,12 @@ export default function ConversationDetail() {
     useEffect(() => {
         const fetchConversationInfo = async () => {
             if (!conversationId) return;
-
             try {
                 const response = await listConversation();
                 if (response.success) {
                     const found = response.data.find(
-                        (item) =>
-                            item.conversation.conversation_id ===
-                            conversationId,
+                        (item) => item.conversation.conversation_id === conversationId
                     );
-
                     if (found) {
                         const conv = found.conversation;
                         let name, avatar, otherUserId;
@@ -303,12 +226,9 @@ export default function ConversationDetail() {
                             otherUserId = null;
                         } else {
                             const otherParticipant =
-                                conv.participants.find(
-                                    (p) => p.user.user_id !== currentUserId,
-                                ) || conv.participants[0];
-                            name =
-                                otherParticipant?.user.full_name ||
-                                "Người dùng ẩn danh";
+                                conv.participants.find((p) => p.user.user_id !== currentUserId) ||
+                                conv.participants[0];
+                            name = otherParticipant?.user.full_name || "Người dùng ẩn danh";
                             avatar = otherParticipant?.user.avatar_url;
                             otherUserId = otherParticipant?.user.user_id;
                         }
@@ -333,7 +253,6 @@ export default function ConversationDetail() {
     useEffect(() => {
         const fetchMessages = async () => {
             if (!conversationId) return;
-
             try {
                 setLoading(true);
                 const response = await fullMessage({
@@ -364,8 +283,7 @@ export default function ConversationDetail() {
 
         try {
             setLoadingMore(true);
-            previousScrollHeightRef.current =
-                messagesContainerRef.current?.scrollHeight || 0;
+            previousScrollHeightRef.current = messagesContainerRef.current?.scrollHeight || 0;
 
             const newOffset = offset + LIMIT;
             const response = await fullMessage({
@@ -400,101 +318,12 @@ export default function ConversationDetail() {
         }
     };
 
-    // Format time
     const formatMessageTime = (dateString) => {
         const date = new Date(dateString);
         if (isToday(date)) return format(date, "HH:mm");
         if (isYesterday(date)) return "Hôm qua";
         return format(date, "dd/MM/yyyy");
     };
-
-    // Socket: realtime reaction
-    useEffect(() => {
-        if (!socket || !conversationId) return;
-
-        const handleAddReaction = (data) => {
-            const {
-                conversation_id,
-                message_reaction: message_id,
-                user_id,
-                emoji,
-                reaction_id,
-            } = data;
-
-            if (Number(conversation_id) !== conversationId) return;
-
-            setMessages((prevMessages) => {
-                return prevMessages.map((currentMessage) => {
-                    if (currentMessage.message_id !== message_id) {
-                        return currentMessage;
-                    }
-
-                    const oldReactions = currentMessage.reactions || []; 
-
-                    const alreadyExists = oldReactions.some((reaction) => {
-                        return (
-                            reaction.user_id === user_id &&
-                            reaction.emoji === emoji
-                        );
-                    });
-
-                    if (alreadyExists) {
-                        return currentMessage;
-                    }
-
-                    const newReactions = [
-                        ...oldReactions, 
-                        { reaction_id, user_id, emoji }, 
-                    ];
-
-                    return {
-                        ...currentMessage,
-                        reactions: newReactions, 
-                    };
-                });
-            });
-        };
-
-        const handleRemoveReaction = (data) => {
-            const {
-                conversation_id,
-                message_reaction: message_id,
-                user_id,
-                emoji,
-            } = data;
-
-            if (Number(conversation_id) !== conversationId) return;
-
-            setMessages((prevMessages) => {
-                return prevMessages.map((currentMessage) => {
-                    if (currentMessage.message_id !== message_id) {
-                        return currentMessage;
-                    }
-
-                    const oldReactions = currentMessage.reactions || [];
-                    const newReactions = oldReactions.filter((reaction) => {
-                        return !(
-                            reaction.user_id === user_id &&
-                            reaction.emoji === emoji
-                        );
-                    });
-
-                    return {
-                        ...currentMessage,
-                        reactions: newReactions,
-                    };
-                });
-            });
-        };
-
-        socket.on("reaction_message", handleAddReaction);
-        socket.on("remove_reaction_message", handleRemoveReaction);
-
-        return () => {
-            socket.off("reaction_message", handleAddReaction);
-            socket.off("remove_reaction_message", handleRemoveReaction);
-        };
-    }, [socket, conversationId]);
 
     if (loading)
         return (
@@ -519,10 +348,7 @@ export default function ConversationDetail() {
                 <div className="flex-1 flex flex-col min-w-0">
                     <header className="h-[72px] shrink-0 border-b border-gray-200 flex items-center justify-between px-6 bg-white/95 backdrop-blur-sm sticky top-0 z-50 shadow-sm">
                         <div className="flex items-center gap-4 cursor-pointer hover:opacity-80 transition-opacity">
-                            <Avatar
-                                src={currentConversation?.avatar}
-                                size="md"
-                            />
+                            <Avatar src={currentConversation?.avatar} size="md" />
                             <div>
                                 <h3 className="text-slate-800 text-base font-bold leading-tight">
                                     {currentConversation?.name || "Đang tải..."}
@@ -530,8 +356,7 @@ export default function ConversationDetail() {
                                 <p className="text-xs font-medium flex items-center gap-1.5 text-gray-500">
                                     {currentConversation?.type === "group" ? (
                                         <span>
-                                            {currentConversation?.participants
-                                                ?.length || 0}{" "}
+                                            {currentConversation?.participants?.length || 0}{" "}
                                             thành viên
                                         </span>
                                     ) : userStatus ? (
@@ -592,25 +417,21 @@ export default function ConversationDetail() {
 
                         {messages.length === 0 ? (
                             <div className="flex-1 flex items-center justify-center text-gray-500">
-                                Chưa có tin nhắn nào. Hãy bắt đầu cuộc trò
-                                chuyện!
+                                Chưa có tin nhắn nào. Hãy bắt đầu cuộc trò chuyện!
                             </div>
                         ) : (
                             messages.map((msg, index) => {
                                 const isMe = msg.sender_id === currentUserId;
                                 const showAvatar =
                                     index === messages.length - 1 ||
-                                    messages[index + 1]?.sender_id !==
-                                        msg.sender_id;
+                                    messages[index + 1]?.sender_id !== msg.sender_id;
 
                                 return (
                                     <MessageItem
-                                        key={
-                                            msg.message_id || `pending-${index}`
-                                        }
+                                        key={msg.message_id || `pending-${index}`}
                                         msg={msg}
-                                        index={index}
                                         messages={messages}
+                                        setMessages={setMessages}
                                         currentUserId={currentUserId}
                                         isMe={isMe}
                                         showAvatar={showAvatar}
@@ -622,28 +443,14 @@ export default function ConversationDetail() {
 
                         {typingUsers.size > 0 && (
                             <div className="flex items-center gap-3 py-2 px-4 animate-fade-in">
-                                <Avatar
-                                    src={currentConversation?.avatar}
-                                    size="sm"
-                                />
+                                <Avatar src={currentConversation?.avatar} size="sm" />
                                 <div className="bg-gray-200 rounded-3xl px-4 py-3 flex items-center gap-1">
-                                    <span
-                                        className="w-2 h-2 bg-gray-600 rounded-full animate-bounce"
-                                        style={{ animationDelay: "0ms" }}
-                                    ></span>
-                                    <span
-                                        className="w-2 h-2 bg-gray-600 rounded-full animate-bounce"
-                                        style={{ animationDelay: "150ms" }}
-                                    ></span>
-                                    <span
-                                        className="w-2 h-2 bg-gray-600 rounded-full animate-bounce"
-                                        style={{ animationDelay: "300ms" }}
-                                    ></span>
+                                    <span className="w-2 h-2 bg-gray-600 rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></span>
+                                    <span className="w-2 h-2 bg-gray-600 rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></span>
+                                    <span className="w-2 h-2 bg-gray-600 rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></span>
                                 </div>
                                 <p className="text-sm text-gray-500 italic">
-                                    {typingUsers.size === 1
-                                        ? "Đang gõ..."
-                                        : "Có người đang gõ..."}
+                                    {typingUsers.size === 1 ? "Đang gõ..." : "Có người đang gõ..."}
                                 </p>
                             </div>
                         )}

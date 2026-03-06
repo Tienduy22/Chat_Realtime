@@ -65,3 +65,16 @@ export const reactionMessage = async (conversation_id, user_id, message_id, emoj
         throw error;
     }
 }
+
+export const editMessage = async (conversation_id, user_id, message_id, content) => {
+    try {
+        const response = await axios.post(
+            "http://localhost:5000/api/message/edit_message",
+            { conversation_id, message_id, user_id, content }
+        );
+        return response.data; 
+    } catch (error) {
+        console.error("Lỗi server:", error);
+        throw error;
+    }
+}
