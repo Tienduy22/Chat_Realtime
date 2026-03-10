@@ -21,8 +21,7 @@ import WelcomeScreen from "../pages/Chat/WelcomeScreen";
 import ProfilePage from "../pages/Profile/ProfilePage";
 import ContactsPage from "../pages/Contacts/ContactsPage";
 import ConversationList from "../components/layout/ConversationList/ConversationList";
-import FriendsList from "../components/contact/FriendsList";
-import FriendRequestsReceived from "../components/contact/FriendRequestsReceived";
+
 
 export const routeConfig = {
     public: [

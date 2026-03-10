@@ -211,11 +211,6 @@ const ConversationList = () => {
                     <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
                         Messages
                     </h2>
-                    <button className="text-gray-400 hover:text-primary transition-colors">
-                        <span className="material-icons text-xl">
-                            edit_square
-                        </span>
-                    </button>
                 </div>
 
                 <div className="relative mb-6">

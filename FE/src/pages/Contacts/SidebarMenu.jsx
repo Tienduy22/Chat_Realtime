@@ -22,11 +22,6 @@ const menuItems = [
         label: "Lời mời kết bạn",
         path: "/contact/invitation",
     },
-    {
-        icon: MessageCircle,
-        label: "Lời mời vào nhóm và cộng đồng",
-        path: "/contact/group-invites",
-    },
 ];
 
 export default function SidebarMenu() {

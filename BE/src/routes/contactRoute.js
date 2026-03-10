@@ -1,6 +1,5 @@
 const express = require("express");
 const contactController = require('../controllers/contact.controller')
-const { validate, contactInvitationsSchema } = require("../validations/contact.validation");
 
 const router = express.Router();
 
@@ -17,6 +16,8 @@ router.get('/send_invitations', contactController.findSendInvitations)
 router.get('/invitations', contactController.findInvitations)
 
 router.get('/friends', contactController.listFriends)
+
+router.get('/groups', contactController.listGroup)
 
 router.post('/block', contactController.blockFriend)
 

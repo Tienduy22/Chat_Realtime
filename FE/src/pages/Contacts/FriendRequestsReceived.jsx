@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import SentRequestCard from "./SentRequestCard";
+import SentRequestCard from "../../components/contact/SentRequestCard";
 import { useSelector } from "react-redux";
 import {
     findInvitations,
     findSendInvitations,
 } from "../../services/contact.service";
-import ReceivedRequestCard from "./ReceivedRequestCard";
+import ReceivedRequestCard from "../../components/contact/ReceivedRequestCard";
 import { useSocket } from "../../context/SocketContext";
 import { useFriendRequestRealtime } from "../../hooks/useContactSocket";
 

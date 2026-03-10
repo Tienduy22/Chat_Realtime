@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { format, isToday, isYesterday } from "date-fns";
+import { Info } from "lucide-react";
 import Avatar from "../../components/common/Avatar/Avatar";
 import ConversationInfo from "./ConversationInfo";
 import { fullMessage } from "../../services/message.service";
@@ -15,20 +16,26 @@ import ConversationList from "../../components/layout/ConversationList/Conversat
 export default function ConversationDetail() {
     const { conversationId: convIdParam } = useParams();
     const conversationId = Number(convIdParam);
+
     const navigate = useNavigate();
-    const { socket, isConnected } = useSocket();
+    const { socket } = useSocket();
+
     const [messages, setMessages] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [currentConversation, setCurrentConversation] = useState(null);
     const [messageInput, setMessageInput] = useState("");
+
     const [offset, setOffset] = useState(0);
     const [hasMore, setHasMore] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
+
+    const [isInfoOpen, setIsInfoOpen] = useState(false);
+
     const messagesContainerRef = useRef(null);
     const previousScrollHeightRef = useRef(0);
+    const previousMessagesLengthRef = useRef(0);
 
-    // 🔥 cache messages theo conversation
     const messageCache = useRef({});
 
     const user = useSelector((state) => state.user);
@@ -57,43 +64,39 @@ export default function ConversationDetail() {
 
         const newScrollHeight = messagesContainerRef.current.scrollHeight;
         const scrollDiff = newScrollHeight - previousScrollHeightRef.current;
+
         messagesContainerRef.current.scrollTop += scrollDiff;
     };
 
     useEffect(() => {
         const redirectToLatestConversation = async () => {
-            console.log("OK", convIdParam);
             if (convIdParam) return;
 
             try {
                 const response = await listConversation();
 
                 if (response.success && response.data.length > 0) {
-                    const latestConversation =
+                    const latest =
                         response.data[0].conversation.conversation_id;
 
-                    navigate(`/chat/${latestConversation}`, { replace: true });
+                    navigate(`/chat/${latest}`, { replace: true });
                 }
             } catch (err) {
-                console.error("Không lấy được conversation gần nhất", err);
+                console.error(err);
             }
         };
 
         redirectToLatestConversation();
-    }, [convIdParam]);
+    }, [convIdParam, navigate]);
 
-    // join conversation
     useEffect(() => {
         if (!socket || isNaN(conversationId)) return;
 
         socket.emit("join_conversation", conversationId);
 
-        return () => {
-            socket.emit("leave_conversation", conversationId);
-        };
+        return () => socket.emit("leave_conversation", conversationId);
     }, [socket, conversationId]);
 
-    // load conversation info
     useEffect(() => {
         const fetchConversationInfo = async () => {
             if (!conversationId) return;
@@ -104,26 +107,22 @@ export default function ConversationDetail() {
                 if (response.success) {
                     const found = response.data.find(
                         (item) =>
-                            item.conversation.conversation_id ===
-                            conversationId,
+                            item.conversation.conversation_id === conversationId
                     );
 
                     if (!found) return;
 
                     const conv = found.conversation;
 
-                    let name;
-                    let avatar;
-                    let otherUserId;
+                    let name, avatar, otherUserId;
 
                     if (conv.conversation_type === "group") {
                         name = conv.name || "Nhóm chat";
                         avatar = conv.avatar_url;
-                        otherUserId = null;
                     } else {
                         const other =
                             conv.participants.find(
-                                (p) => p.user.user_id !== currentUserId,
+                                (p) => p.user.user_id !== currentUserId
                             ) || conv.participants[0];
 
                         name = other?.user.full_name || "Người dùng";
@@ -146,12 +145,10 @@ export default function ConversationDetail() {
         fetchConversationInfo();
     }, [conversationId, currentUserId]);
 
-    // 🔥 load messages (có cache)
     useEffect(() => {
         const fetchMessages = async () => {
             if (!conversationId) return;
 
-            // nếu cache có rồi thì dùng luôn
             if (messageCache.current[conversationId]) {
                 setMessages(messageCache.current[conversationId]);
                 return;
@@ -170,6 +167,7 @@ export default function ConversationDetail() {
                     const newMessages = response.data.reverse();
 
                     setMessages(newMessages);
+
                     messageCache.current[conversationId] = newMessages;
 
                     setHasMore(newMessages.length === LIMIT);
@@ -209,9 +207,7 @@ export default function ConversationDetail() {
                 if (olderMessages.length > 0) {
                     setMessages((prev) => {
                         const merged = [...olderMessages, ...prev];
-
                         messageCache.current[conversationId] = merged;
-
                         return merged;
                     });
 
@@ -247,8 +243,6 @@ export default function ConversationDetail() {
         return format(date, "dd/MM/yyyy");
     };
 
-    const previousMessagesLengthRef = useRef(0);
-
     useEffect(() => {
         if (messages.length > previousMessagesLengthRef.current) {
             scrollToBottom(true);
@@ -272,84 +266,104 @@ export default function ConversationDetail() {
     }
 
     return (
-        <div className="h-screen flex flex-col">
-            <div className="flex-1 flex overflow-hidden">
-                <ConversationList />
+        <div className="h-screen flex">
+            <ConversationList />
 
-                <main className="flex-1 overflow-y-auto bg-gray-50">
-                    <div className="flex-1 flex flex-col bg-white h-full relative min-w-0">
-                        {/* HEADER */}
-                        <header className="h-[72px] border-b flex items-center px-6 bg-white">
-                            <div className="flex items-center gap-4">
-                                <Avatar src={currentConversation?.avatar} />
-                                <h3 className="font-bold">
-                                    {currentConversation?.name || "Đang tải..."}
-                                </h3>
-                            </div>
-                        </header>
+            <div className="flex-1 flex overflow-hidden relative">
 
-                        {/* MESSAGES */}
-                        <div
-                            ref={messagesContainerRef}
-                            onScroll={handleScroll}
-                            className="flex-1 overflow-y-auto p-6 flex flex-col gap-6"
-                        >
-                            {loading && messages.length === 0 && (
-                                <div className="text-center text-gray-500">
-                                    Đang tải tin nhắn...
-                                </div>
-                            )}
+                {/* CHAT */}
+                <main
+                    className={`flex-1 flex flex-col bg-white transition-[margin] duration-300 ${
+                        isInfoOpen ? "mr-[300px]" : ""
+                    }`}
+                >
 
-                            {messages.map((msg, index) => {
-                                const isMe = msg.sender_id === currentUserId;
-
-                                const showAvatar =
-                                    index === messages.length - 1 ||
-                                    messages[index + 1]?.sender_id !==
-                                        msg.sender_id;
-
-                                return (
-                                    <MessageItem
-                                        key={
-                                            msg.message_id || `pending-${index}`
-                                        }
-                                        msg={msg}
-                                        messages={messages}
-                                        setMessages={setMessages}
-                                        currentUserId={currentUserId}
-                                        isMe={isMe}
-                                        showAvatar={showAvatar}
-                                        formatMessageTime={formatMessageTime}
-                                    />
-                                );
-                            })}
+                    {/* HEADER */}
+                    <header className="h-[72px] border-b flex items-center justify-between px-6">
+                        <div className="flex items-center gap-4">
+                            <Avatar src={currentConversation?.avatar} />
+                            <h3 className="font-bold">
+                                {currentConversation?.name || "Đang tải..."}
+                            </h3>
                         </div>
 
-                        <MessageInput
-                            currentUserId={currentUserId}
-                            conversationId={conversationId}
-                            messageInput={messageInput}
-                            setMessageInput={setMessageInput}
-                            socket={socket}
-                            onSendMessage={(optimisticMsgs) => {
-                                setMessages((prev) => {
-                                    const updated = [
-                                        ...prev,
-                                        ...optimisticMsgs,
-                                    ];
+                        <button
+                            onClick={() => setIsInfoOpen(!isInfoOpen)}
+                            className="p-2 rounded-full hover:bg-gray-100"
+                        >
+                            <Info size={20} />
+                        </button>
+                    </header>
 
-                                    messageCache.current[conversationId] =
-                                        updated;
+                    {/* MESSAGES */}
+                    <div
+                        ref={messagesContainerRef}
+                        onScroll={handleScroll}
+                        className="flex-1 overflow-y-auto p-6 flex flex-col gap-6 bg-gray-50"
+                    >
+                        {loading && messages.length === 0 && (
+                            <div className="text-center text-gray-500">
+                                Đang tải tin nhắn...
+                            </div>
+                        )}
 
-                                    return updated;
-                                });
+                        {messages.map((msg, index) => {
+                            const isMe = msg.sender_id === currentUserId;
 
-                                setTimeout(() => scrollToBottom(true), 100);
-                            }}
-                        />
+                            const showAvatar =
+                                index === messages.length - 1 ||
+                                messages[index + 1]?.sender_id !== msg.sender_id;
+
+                            return (
+                                <MessageItem
+                                    key={msg.message_id || `pending-${index}`}
+                                    msg={msg}
+                                    messages={messages}
+                                    setMessages={setMessages}
+                                    currentUserId={currentUserId}
+                                    isMe={isMe}
+                                    showAvatar={showAvatar}
+                                    formatMessageTime={formatMessageTime}
+                                />
+                            );
+                        })}
                     </div>
+
+                    <MessageInput
+                        currentUserId={currentUserId}
+                        conversationId={conversationId}
+                        messageInput={messageInput}
+                        setMessageInput={setMessageInput}
+                        socket={socket}
+                        onSendMessage={(optimisticMsgs) => {
+                            setMessages((prev) => {
+                                const updated = [...prev, ...optimisticMsgs];
+                                messageCache.current[conversationId] = updated;
+                                return updated;
+                            });
+
+                            setTimeout(() => scrollToBottom(true), 100);
+                        }}
+                    />
                 </main>
+
+                {/* INFO PANEL */}
+                <aside
+                    className={`absolute right-0 top-0 h-full w-[300px] border-l bg-white flex flex-col
+                    transition-transform duration-300 z-30
+                    ${isInfoOpen ? "translate-x-0" : "translate-x-full"}`}
+                >
+                    <ConversationInfo onClose={() => setIsInfoOpen(false)} />
+                </aside>
+
+                {isInfoOpen && (
+                    <div
+                        className="fixed inset-0 bg-black/40 z-20 xl:hidden"
+                        onClick={() => setIsInfoOpen(false)}
+                    />
+                )}
             </div>
         </div>
     );
 }
+

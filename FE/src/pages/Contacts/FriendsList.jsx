@@ -15,7 +15,7 @@ import {
     findContactByPhone,
     sendInvitations,
 } from "../../services/contact.service";
-import FriendCard from "./FriendCard";
+import FriendCard from "../../components/contact/FriendCard";
 
 export default function FriendsList() {
     const [friends, setFriends] = useState([]);

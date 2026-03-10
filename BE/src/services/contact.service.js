@@ -186,6 +186,16 @@ const listFriends = async ({ user_id }) => {
     }
 };
 
+const listGroup = async ({ user_id }) => {
+    try {
+        const listGroup = await contactReponsitory.listGroup(user_id);
+
+        return listGroup;
+    } catch (error) {
+        throw error;
+    }
+};
+
 const blockFriend = async ({ user_id, friend_id }) => {
     try {
         const contact1 = await contactReponsitory.findByUserIdAndContactUserId(
@@ -304,6 +314,7 @@ module.exports = {
     blockFriend,
     unBlockFriend,
     listBlocked,
+    listGroup,
     findContactByPhone,
     findSendInvitations,
     findInvitations,

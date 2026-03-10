@@ -3,10 +3,10 @@ const userReponsitory = require("../repositories/user.reponsitory");
 const blockedUserReponsitory = require("../repositories/blockedUser.reponsitory");
 const messageReponsitory = require("../repositories/message.reponsitory");
 
-const createNewGroupConversation = async (data, images) => {
+const createNewGroupConversation = async (data, image) => {
     try {
         const { admin_id, member_ids, name } = data;
-        const avatar_url = images[0];
+        const avatar_url = image[0];
 
         const admin = await userReponsitory.findById(admin_id)
         if(!admin) {

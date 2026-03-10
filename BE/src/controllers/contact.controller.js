@@ -56,6 +56,20 @@ const listFriends = async (req, res, next) => {
     }
 };
 
+const listGroup = async (req, res, next) => {
+    try {
+        const result = await contactService.listGroup(req.query);
+
+        return res.status(201).json({
+            success: true,
+            message: "Lấy danh sách nhóm thành công",
+            data: result, 
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 const blockFriend = async (req, res, next) => {
     try {
         const result = await contactService.blockFriend(req.body);
@@ -162,6 +176,7 @@ module.exports = {
     blockFriend,
     unBlockFriend,
     listBlocked,
+    listGroup,
     findContactByPhone,
     findSendInvitations,
     findInvitations,

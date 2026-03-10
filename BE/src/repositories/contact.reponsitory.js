@@ -1,4 +1,4 @@
-const { User, Contact } = require("../models");
+const { User, Contact, Conversation, ConversationParticipant } = require("../models");
 
 const findById = async (contact_id) => {
     try {
@@ -176,6 +176,30 @@ const ListFriends = async (user_id) => {
     }
 };
 
+const listGroup = async (user_id) => {
+    try {
+        const groups = await Conversation.findAll({
+            where: {
+                conversation_type: "group",
+            },
+            include: [
+                {
+                    model: ConversationParticipant,
+                    as: "participants",
+                    where: {
+                        user_id: user_id,
+                    },
+                    attributes: []
+                }
+            ]
+        });
+
+        return groups;
+    } catch (error) {
+        throw error;
+    }
+};
+
 const removeInvitations = async (contact_id) => {
     try {
         return await Contact.destroy({
@@ -197,6 +221,7 @@ module.exports = {
     acceptInvitations,
     rejectInvitations,
     ListFriends,
+    listGroup,
     findSendInvitations,
     findInvitations,
     removeInvitations

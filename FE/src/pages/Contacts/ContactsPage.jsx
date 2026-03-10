@@ -1,9 +1,8 @@
 import { useLocation } from "react-router-dom";
-import FriendsList from "../../components/contact/FriendsList";
-import GroupsCommunitiesList from "../../components/contact/GroupsCommunitiesList";
-import FriendRequestsReceived from "../../components/contact/FriendRequestsReceived";
-import GroupCommunityInvites from "../../components/contact/GroupCommunityInvites";
-import SidebarMenu from "../../components/contact/SidebarMenu";
+import FriendsList from "./FriendsList";
+import GroupsCommunitiesList from "./GroupsCommunitiesList";
+import FriendRequestsReceived from "./FriendRequestsReceived";
+import SidebarMenu from "./SidebarMenu";
 
 export default function ContactsPage() {
     const location = useLocation();
@@ -21,10 +20,6 @@ export default function ContactsPage() {
 
         if (path === "/contact/invitation") {
             return <FriendRequestsReceived />;
-        }
-
-        if (path === "/contact/group-invites") {
-            return <GroupCommunityInvites />;
         }
 
         return <FriendsList />;

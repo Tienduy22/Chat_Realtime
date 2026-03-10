@@ -26,7 +26,7 @@ router.post(
 
 router.post(
     "/new_group",
-    upload.array("images", 10),
+    upload.array("image", 10),
     uploadCloudinary,
     validate(groupConversationSchema),
     conversationController.createNewGroupConversation
