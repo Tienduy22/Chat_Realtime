@@ -44,7 +44,7 @@ const rejectInvitations = async (req, res, next) => {
 
 const listFriends = async (req, res, next) => {
     try {
-        const result = await contactService.listFriends(req.body);
+        const result = await contactService.listFriends(req.query);
 
         return res.status(201).json({
             success: true,
@@ -98,6 +98,62 @@ const listBlocked = async (req, res, next) => {
     }
 };
 
+const findContactByPhone = async (req, res, next) => {
+    try {
+        const result = await contactService.findContactByPhone(req.query);
+
+        return res.status(201).json({
+            success: true,
+            message: "Lấy contact thành công",
+            data: result, 
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const findSendInvitations = async (req, res, next) => {
+    try {
+        const result = await contactService.findSendInvitations(req.query);
+
+        return res.status(201).json({
+            success: true,
+            message: "Lấy data thành công",
+            data: result, 
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const findInvitations = async (req, res, next) => {
+    try {
+        const result = await contactService.findInvitations(req.query);
+
+        return res.status(201).json({
+            success: true,
+            message: "Lấy data thành công",
+            data: result, 
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const removeInvitations = async (req, res, next) => {
+    try {
+        const result = await contactService.removeInvitations(req.query);
+
+        return res.status(201).json({
+            success: true,
+            message: "Xóa lời mời thành công",
+            data: result, 
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     sendInvitations,
     acceptInvitations,
@@ -105,5 +161,9 @@ module.exports = {
     listFriends,
     blockFriend,
     unBlockFriend,
-    listBlocked
+    listBlocked,
+    findContactByPhone,
+    findSendInvitations,
+    findInvitations,
+    removeInvitations
 }

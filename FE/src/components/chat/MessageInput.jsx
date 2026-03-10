@@ -1,10 +1,9 @@
-// src/components/chat/MessageInput/MessageInput.jsx
 import React, { useState, useRef, useEffect } from "react";
 import Picker from "@emoji-mart/react";
 import data from "@emoji-mart/data";
 import { Grid } from "@giphy/react-components";
 import { GiphyFetch } from "@giphy/js-fetch-api";
-import { createMessage, markAsRead } from "../../../services/message.service";
+import { createMessage, markAsRead } from "../../services/message.service";
 import { useSelector } from "react-redux";
 
 const gf = new GiphyFetch("sXpGFDGZs0Dv1mmNFvYaGUvYwKX0PWIh");

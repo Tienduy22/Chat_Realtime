@@ -19,6 +19,10 @@ import Login from "../pages/Auth/Login";
 import Register from "../pages/Auth/Register";
 import WelcomeScreen from "../pages/Chat/WelcomeScreen";
 import ProfilePage from "../pages/Profile/ProfilePage";
+import ContactsPage from "../pages/Contacts/ContactsPage";
+import ConversationList from "../components/layout/ConversationList/ConversationList";
+import FriendsList from "../components/contact/FriendsList";
+import FriendRequestsReceived from "../components/contact/FriendRequestsReceived";
 
 export const routeConfig = {
     public: [
@@ -35,11 +39,39 @@ export const routeConfig = {
     ],
 
     protected: [
-        { path: "/", redirect: "/chat" },
+        {
+            path: "/",
+            element: WelcomeScreen,
+        },
         {
             path: "/chat",
-            element: WelcomeScreen,
+            element: ConversationList,
             meta: { title: "Chat", icon: "MessageSquare", showInSidebar: true },
+        },
+        {
+            path: "/contact",
+            element: ContactsPage,
+            meta: {
+                title: "Contact",
+                icon: "MessageSquare",
+                showInSidebar: true,
+            },
+        },
+        {
+            path: "/contact/friends",
+            element: ContactsPage,
+        },
+        {
+            path: "/contact/groups",
+            element: ContactsPage,
+        },
+        {
+            path: "/contact/invitation",
+            element: ContactsPage,
+        },
+        {
+            path: "/contact/group-invites",
+            element: ContactsPage,
         },
         {
             path: "/chat/:conversationId",
@@ -56,16 +88,16 @@ export const routeConfig = {
 
 // Các hàm helper giữ nguyên...
 export const getSidebarRoutes = () => {
-  return routeConfig.protected.filter(route => route.meta?.showInSidebar);
+    return routeConfig.protected.filter((route) => route.meta?.showInSidebar);
 };
 
 export const getRouteMeta = (path) => {
-  const allRoutes = [...routeConfig.public, ...routeConfig.protected];
-  return allRoutes.find(route => route.path === path)?.meta;
+    const allRoutes = [...routeConfig.public, ...routeConfig.protected];
+    return allRoutes.find((route) => route.path === path)?.meta;
 };
 
-export const getPublicPaths = () => routeConfig.public.map(r => r.path);
-export const getProtectedPaths = () => routeConfig.protected.map(r => r.path);
+export const getPublicPaths = () => routeConfig.public.map((r) => r.path);
+export const getProtectedPaths = () => routeConfig.protected.map((r) => r.path);
 
 const AppRouter = () => {
     return (
@@ -80,24 +112,31 @@ const AppRouter = () => {
                 <Route element={<ProtectedRoute />}>
                     <Route element={<SocketProvider />}>
                         <Route element={<MainLayout />}>
-                            {routeConfig.protected.map(({ path, element: Element, redirect }) => {
-                                if (redirect) {
+                            {routeConfig.protected.map(
+                                ({ path, element: Element, redirect }) => {
+                                    if (redirect) {
+                                        return (
+                                            <Route
+                                                key={path}
+                                                path={path}
+                                                element={
+                                                    <Navigate
+                                                        to={redirect}
+                                                        replace
+                                                    />
+                                                }
+                                            />
+                                        );
+                                    }
                                     return (
                                         <Route
                                             key={path}
                                             path={path}
-                                            element={<Navigate to={redirect} replace />}
+                                            element={<Element />}
                                         />
                                     );
-                                }
-                                return (
-                                    <Route
-                                        key={path}
-                                        path={path}
-                                        element={<Element />}
-                                    />
-                                );
-                            })}
+                                },
+                            )}
                         </Route>
                     </Route>
                 </Route>

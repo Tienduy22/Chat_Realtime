@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
-import Avatar from "../../common/Avatar/Avatar";
-import { useSocket } from "../../../context/SocketContext";
+import Avatar from "../common/Avatar/Avatar";
+import { useSocket } from "../../context/SocketContext";
 import {
     reactionMessage,
     editMessage,
-} from "../../../services/message.service";
+} from "../../services/message.service";
 
 const QUICK_EMOJIS = ["❤️", "😂", "😮", "👍", "😢", "👎"];
 

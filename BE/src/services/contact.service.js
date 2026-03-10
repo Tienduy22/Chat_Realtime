@@ -35,16 +35,13 @@ const sendInvitations = async ({ user_id, contact_user_id }) => {
             }
         }
 
-        // 4. Tạo contact (lời mời kết bạn)
         const contact = await contactReponsitory.sendInvitations(
             user_id,
             contact_user_id
         );
 
-        // 5. Lấy thông tin user gửi lời mời
         const user = await userRepossitory.findById(user_id);
 
-        // 6. Tạo notification
         const content = `${user.username} đã gửi lời mời kết bạn`;
         const notification =
             await notificationReponsitory.notificationSendInvite(
@@ -53,10 +50,8 @@ const sendInvitations = async ({ user_id, contact_user_id }) => {
                 user_id
             );
 
-        // 7. GỬI REALTIME NOTIFICATION QUA SOCKET.IO
         const io = global.io;
         if (io) {
-            // Emit tới user nhận lời mời
             io.to(`user:${contact_user_id}`).emit("friend_request_received", {
                 notification_id: notification.notification_id,
                 type: "friend_request",
@@ -68,8 +63,9 @@ const sendInvitations = async ({ user_id, contact_user_id }) => {
                     full_name: user.full_name,
                     avatar_url: user.avatar_url,
                 },
+                contact_id: contact.contact_id,
                 reference_id: user_id,
-                created_at: notification.created_at,
+                created_at: new Date(),
             });
         }
 
@@ -101,11 +97,12 @@ const acceptInvitations = async ({ user_id, contact_user_id }) => {
                 message: "Không tìm thấy tài khoản người gửi",
             };
         }
-
+        console.log("contactUser:", contact_user_id);
+        console.log("user_id:", user_id);
         const contactSend =
             await contactReponsitory.findByUserIdAndContactUserId(
-                contactUser.user_id,
-                user_id
+                contact_user_id,
+                user_id,
             );
         if (!contactSend) {
             throw {
@@ -161,11 +158,10 @@ const acceptInvitations = async ({ user_id, contact_user_id }) => {
     }
 };
 
-const rejectInvitations = async ({ user_id, contact_user_id }) => {
+const rejectInvitations = async ({ contact_id }) => {
     try {
-        const contact = await contactReponsitory.findByUserIdAndContactUserId(
-            contact_user_id,
-            user_id
+        const contact = await contactReponsitory.findById(
+            contact_id
         );
         if (!contact) {
             throw { statusCode: 404, message: "Lời mời không tồn tại" };
@@ -264,6 +260,42 @@ const listBlocked = async ({ user_id }) => {
     }
 };
 
+const findContactByPhone = async ({phone}) => { 
+    try {
+        const contact = await contactReponsitory.findByPhone(phone);
+        return contact;
+    } catch (error) {
+        throw error;
+    }
+};
+
+const findSendInvitations = async ({user_id}) => { 
+    try {
+        const result = await contactReponsitory.findSendInvitations(user_id);
+        return result;
+    } catch (error) {
+        throw error;
+    }
+};
+
+const findInvitations = async ({user_id}) => { 
+    try {
+        const result = await contactReponsitory.findInvitations(user_id);
+        return result;
+    } catch (error) {
+        throw error;
+    }
+};
+
+const removeInvitations = async ({contact_id}) => { 
+    try {
+        return await contactReponsitory.removeInvitations(contact_id);
+    } catch (error) {
+        throw error;
+    }
+};
+
+
 module.exports = {
     sendInvitations,
     acceptInvitations,
@@ -272,4 +304,8 @@ module.exports = {
     blockFriend,
     unBlockFriend,
     listBlocked,
+    findContactByPhone,
+    findSendInvitations,
+    findInvitations,
+    removeInvitations
 };

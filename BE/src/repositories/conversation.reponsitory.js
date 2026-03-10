@@ -14,6 +14,7 @@ const createNewConversation = async (userId, friendId) => {
         const conversation = await Conversation.create(
             {
                 conversation_type: "private",
+                created_by: userId,
             },
             { transaction }
         );

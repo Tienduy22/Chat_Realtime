@@ -1,12 +1,8 @@
 const Joi = require("joi");
 
 const contactInvitationsSchema = Joi.object({
-    user_id: Joi.number().required().messages({
-        "any.required": "user_id là bắt buộc",
-    }),
-
-    contact_user_id: Joi.number().required().messages({
-        "any.required": "contact_user_id là bắt buộc",
+    contact_id: Joi.number().required().messages({
+        "any.required": "contact_id là bắt buộc",
     }),
 });
 
