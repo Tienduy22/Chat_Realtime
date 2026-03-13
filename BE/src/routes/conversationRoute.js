@@ -15,6 +15,18 @@ const router = express.Router();
 
 router.get("/list_conversation", authenticate, conversationController.listConversation)
 
+router.get("/data", conversationController.dataOfConversation)
+
+router.get("/block-status", authenticate, conversationController.getConversationWithBlockStatus)
+
+router.get("/admin", conversationController.AdminInfo)
+
+router.get("/message", conversationController.searchMessage)
+
+router.get("/storage", conversationController.conversationStorage)
+
+router.get("/member", conversationController.memberOfConversation)
+
 router.get("/:conversation_id", authenticate, conversationController.AllMessageOfConversation)
 
 router.get("/detail/:conversation_id", authenticate, conversationController.findById)
@@ -36,12 +48,6 @@ router.post(
     "/member",
     validate(memberSchema),
     conversationController.addMember
-);
-
-router.delete(
-    "/member",
-    validate(memberSchema),
-    conversationController.deleteMember
 );
 
 router.post(
@@ -85,6 +91,28 @@ router.post(
 router.patch(
     "/update_conversation",
     conversationController.updateConversation
+);
+
+router.delete(
+    "/member",
+    validate(memberSchema),
+    conversationController.deleteMember
+);
+
+router.delete(
+    "/member",
+    validate(memberSchema),
+    conversationController.deleteMember
+);
+
+router.delete(
+    "/history",
+    conversationController.deleteHistoryOfConversation
+);
+
+router.delete(
+    "/group",
+    conversationController.deleteGroup
 );
 
 module.exports = router;

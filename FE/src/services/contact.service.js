@@ -176,3 +176,35 @@ export const newGroup = async (data) => {
         throw error;
     }
 };
+
+export const blockFriend = async (user_id, friend_id) => {
+    try {
+        const response = await axios.post(
+            "http://localhost:5000/api/contact/block",
+            {
+                user_id,
+                friend_id,
+            },
+        );
+        return response.data;
+    } catch (error) {
+        console.error("Đã xảy ra lỗi khi lấy dữ liệu:", error);
+        throw error;
+    }
+};
+
+export const unBlockFriend = async (user_id, friend_id) => {
+    try {
+        const response = await axios.post(
+            "http://localhost:5000/api/contact/unblock",
+            {
+                user_id,
+                friend_id,
+            },
+        );
+        return response.data;
+    } catch (error) {
+        console.error("Đã xảy ra lỗi khi lấy dữ liệu:", error);
+        throw error;
+    }
+};

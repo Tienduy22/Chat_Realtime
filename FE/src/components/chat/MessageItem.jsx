@@ -322,7 +322,7 @@ const MessageItem = ({
 
     return (
         <div
-            className={`flex gap-4 max-w-[80%] ${isMe ? "self-end flex-row-reverse" : ""}`}
+            className={`flex gap-4 ${isMe ? "max-w-full self-end flex-row-reverse" : "max-w-[80%"}`}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => {
                 setIsHovered(false);

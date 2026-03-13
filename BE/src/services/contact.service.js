@@ -209,23 +209,24 @@ const blockFriend = async ({ user_id, friend_id }) => {
             };
         }
 
-        const contact2 = await contactReponsitory.findByUserIdAndContactUserId(
-            friend_id,
-            user_id
-        );
-        if (!contact2) {
-            throw {
-                statusCode: 404,
-                message: "Không thể block vì chưa là bạn bè",
-            };
-        }
-
         await contactReponsitory.updateStatus(contact1.contact_id, "blocked");
-        await contactReponsitory.updateStatus(contact2.contact_id, "blocked");
         const blocked = await blockedUserReponsitory.blockFriend(
             user_id,
             friend_id
         );
+
+        // ✅ Emit socket event for real-time update
+        const io = global.io;
+        if (io) {
+            io.to(`user:${friend_id}`).emit("user_blocked", {
+                blocker_id: user_id,
+                blocked_id: friend_id,
+            });
+            io.to(`user:${user_id}`).emit("user_blocked", {
+                blocker_id: user_id,
+                blocked_id: friend_id,
+            });
+        }
 
         return blocked;
     } catch (error) {
@@ -239,19 +240,27 @@ const unBlockFriend = async ({ user_id, friend_id }) => {
             user_id,
             friend_id
         );
-        const contact2 = await contactReponsitory.findByUserIdAndContactUserId(
-            friend_id,
-            user_id
-        );
 
-        await contactReponsitory.updateStatus(contact1.contact_id, "accepted");
-        await contactReponsitory.updateStatus(contact2.contact_id, "accepted");
+        await contactReponsitory.updateStatus(contact1.contact_id, "accepted");;
 
         const block = await blockedUserReponsitory.findBlock(
             user_id,
             friend_id
         );
         await blockedUserReponsitory.unBlockFriend(block.block_id);
+
+        // ✅ Emit socket event for real-time update
+        const io = global.io;
+        if (io) {
+            io.to(`user:${friend_id}`).emit("user_unblocked", {
+                blocker_id: user_id,
+                blocked_id: friend_id,
+            });
+            io.to(`user:${user_id}`).emit("user_unblocked", {
+                blocker_id: user_id,
+                blocked_id: friend_id,
+            });
+        }
 
         return {
             message: "Gỡ block thành công",

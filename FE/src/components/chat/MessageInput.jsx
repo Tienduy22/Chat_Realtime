@@ -16,6 +16,8 @@ const MessageInput = ({
     currentUserId,
     socket,
     messages = [],
+    isBlocking = false,
+    isBlocked = false,
 }) => {
     const [selectedFiles, setSelectedFiles] = useState([]);
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -289,6 +291,16 @@ const MessageInput = ({
 
     return (
         <div className="p-6 pt-2 shrink-0 bg-white border-t border-gray-200 relative">
+            {/* ✅ Block Status Messages */}
+            {(isBlocking || isBlocked) && (
+                <div className={`mb-4 p-3 rounded-lg text-center text-sm font-medium ${
+                    isBlocking ? "bg-red-50 text-red-600" : "bg-orange-50 text-orange-600"
+                }`}>
+                    {isBlocking && "Bạn đã chặn người này - Không thể gửi tin nhắn"}
+                    {isBlocked && "Bạn đang bị chặn - Không thể gửi tin nhắn"}
+                </div>
+            )}
+
             {selectedFiles.length > 0 && (
                 <div className="mb-4 flex flex-wrap gap-3 px-2">
                     {selectedFiles.map((item, index) => (
@@ -362,15 +374,21 @@ const MessageInput = ({
                     onChange={handleInputChange}
                     onKeyDown={handleKeyDown}
                     onFocus={handleTextareaFocus}
-                    placeholder="Nhập tin nhắn..."
-                    className="w-full bg-transparent border-none focus:outline-none text-slate-800 placeholder:text-slate-500/60 resize-none h-12 py-3 px-4 scrollbar-thin"
+                    disabled={isBlocking || isBlocked}
+                    placeholder={isBlocking || isBlocked ? "Không thể gửi tin nhắn" : "Nhập tin nhắn..."}
+                    className={`w-full bg-transparent border-none focus:outline-none text-slate-800 placeholder:text-slate-500/60 resize-none h-12 py-3 px-4 scrollbar-thin ${
+                        (isBlocking || isBlocked) ? "opacity-50 cursor-not-allowed" : ""
+                    }`}
                 />
 
                 <div className="flex items-center justify-between px-2 pb-1">
                     <div className="flex items-center gap-1">
                         <button
                             onClick={() => fileInputRef.current?.click()}
-                            className="size-9 rounded-lg hover:bg-gray-100 hover:text-[#135bec] transition-all flex items-center justify-center"
+                            disabled={isBlocking || isBlocked}
+                            className={`size-9 rounded-lg hover:bg-gray-100 hover:text-[#135bec] transition-all flex items-center justify-center ${
+                                (isBlocking || isBlocked) ? "opacity-50 cursor-not-allowed" : ""
+                            }`}
                         >
                             <span className="material-symbols-outlined text-xl text-slate-500">
                                 add_circle
@@ -383,6 +401,7 @@ const MessageInput = ({
                             accept="image/*,video/*,.pdf,.doc,.docx"
                             className="hidden"
                             onChange={handleFileSelect}
+                            disabled={isBlocking || isBlocked}
                         />
 
                         <div className="relative" ref={emojiPickerRef}>
@@ -390,7 +409,10 @@ const MessageInput = ({
                                 onClick={() =>
                                     setShowEmojiPicker(!showEmojiPicker)
                                 }
-                                className="size-9 rounded-lg hover:bg-gray-100 hover:text-[#135bec] transition-all flex items-center justify-center"
+                                disabled={isBlocking || isBlocked}
+                                className={`size-9 rounded-lg hover:bg-gray-100 hover:text-[#135bec] transition-all flex items-center justify-center ${
+                                    (isBlocking || isBlocked) ? "opacity-50 cursor-not-allowed" : ""
+                                }`}
                             >
                                 <span className="material-symbols-outlined text-xl text-slate-500">
                                     sentiment_satisfied
@@ -416,7 +438,10 @@ const MessageInput = ({
                         <div className="relative" ref={gifPickerRef}>
                             <button
                                 onClick={() => setShowGifPicker(!showGifPicker)}
-                                className="size-9 rounded-lg hover:bg-gray-100 hover:text-[#135bec] transition-all flex items-center justify-center"
+                                disabled={isBlocking || isBlocked}
+                                className={`size-9 rounded-lg hover:bg-gray-100 hover:text-[#135bec] transition-all flex items-center justify-center ${
+                                    (isBlocking || isBlocked) ? "opacity-50 cursor-not-allowed" : ""
+                                }`}
                             >
                                 <span className="material-symbols-outlined text-xl text-slate-500">
                                     gif_box
@@ -481,8 +506,10 @@ const MessageInput = ({
                         <button
                             onClick={handleSend}
                             disabled={
-                                !messageInput.trim() &&
-                                selectedFiles.length === 0
+                                (!messageInput.trim() &&
+                                selectedFiles.length === 0) ||
+                                isBlocking ||
+                                isBlocked
                             }
                             className="px-4 h-9 rounded-lg bg-[#135bec] disabled:bg-gray-300 text-white font-medium flex items-center gap-2 hover:bg-blue-700 disabled:hover:bg-gray-300 transition-all"
                         >

@@ -1,6 +1,7 @@
 const messageReponsitory = require("../repositories/message.reponsitory");
 const conversationReponsitory = require("../repositories/conversation.reponsitory");
 const userReponsitory = require("../repositories/user.reponsitory");
+const blockedUserReponsitory = require("../repositories/blockedUser.reponsitory");
 
 const createMessage = async (req) => {
     try {
@@ -20,6 +21,25 @@ const createMessage = async (req) => {
                 statusCode: 404,
                 message: "Người gửi không tồn tại",
             };
+        }
+
+        if (conversation.conversation_type === "private") {
+            const participants = await conversationReponsitory.findAllMemberOfGroup(conversation_id);
+            const otherParticipant = participants.find(p => p.user_id !== sender_id);
+            
+            if (otherParticipant) {
+                const isBlocked = await blockedUserReponsitory.findBlock(
+                    otherParticipant.user_id,
+                    sender_id
+                );
+                
+                if (isBlocked) {
+                    throw {
+                        statusCode: 403,
+                        message: "Bạn đã bị chặn và không thể gửi tin nhắn",
+                    };
+                }
+            }
         }
 
         let content = "";

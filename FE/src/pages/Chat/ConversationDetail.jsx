@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import { format, isToday, isYesterday } from "date-fns";
-import { Info } from "lucide-react";
+import { Info, X } from "lucide-react";
 import Avatar from "../../components/common/Avatar/Avatar";
 import ConversationInfo from "./ConversationInfo";
 import { fullMessage } from "../../services/message.service";
-import { listConversation } from "../../services/conversation.service";
+import { listConversation, getConversationWithBlockStatus } from "../../services/conversation.service";
 import { useSelector } from "react-redux";
 import MessageInput from "../../components/chat/MessageInput";
 import MessageItem from "../../components/chat/MessageItem";
@@ -26,13 +26,24 @@ export default function ConversationDetail() {
     const [currentConversation, setCurrentConversation] = useState(null);
     const [messageInput, setMessageInput] = useState("");
 
+    // ✅ Block status states
+    const [isBlocking, setIsBlocking] = useState(false);
+    const [isBlocked, setIsBlocked] = useState(false);
+
     const [offset, setOffset] = useState(0);
     const [hasMore, setHasMore] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
 
     const [isInfoOpen, setIsInfoOpen] = useState(false);
 
+    /* SEARCH */
+    const [isSearching, setIsSearching] = useState(false);
+    const [searchKeyword, setSearchKeyword] = useState("");
+    const [searchResults, setSearchResults] = useState([]);
+    const [selectedMessageId, setSelectedMessageId] = useState(null);
+
     const messagesContainerRef = useRef(null);
+    const messageRefs = useRef({});
     const previousScrollHeightRef = useRef(0);
     const previousMessagesLengthRef = useRef(0);
 
@@ -44,6 +55,8 @@ export default function ConversationDetail() {
     const LIMIT = 20;
 
     useMessageSocket(socket, conversationId, currentUserId, setMessages);
+
+    /* SCROLL */
 
     const scrollToBottom = (immediate = false) => {
         if (!messagesContainerRef.current) return;
@@ -63,10 +76,40 @@ export default function ConversationDetail() {
         if (!messagesContainerRef.current) return;
 
         const newScrollHeight = messagesContainerRef.current.scrollHeight;
-        const scrollDiff = newScrollHeight - previousScrollHeightRef.current;
+        const diff = newScrollHeight - previousScrollHeightRef.current;
 
-        messagesContainerRef.current.scrollTop += scrollDiff;
+        messagesContainerRef.current.scrollTop += diff;
     };
+
+    /* SCROLL TO MESSAGE */
+
+    const scrollToMessage = (messageId) => {
+        const el = messageRefs.current[messageId];
+
+        if (el) {
+            el.scrollIntoView({
+                behavior: "smooth",
+                block: "center",
+            });
+
+            setSelectedMessageId(messageId);
+        }
+    };
+
+    /* CLOSE SEARCH */
+
+    const closeSearch = () => {
+        setIsSearching(false);
+        setSearchKeyword("");
+        setSearchResults([]);
+        setSelectedMessageId(null);
+
+        setTimeout(() => {
+            scrollToBottom(true);
+        }, 200);
+    };
+
+    /* REDIRECT LATEST CHAT */
 
     useEffect(() => {
         const redirectToLatestConversation = async () => {
@@ -89,6 +132,8 @@ export default function ConversationDetail() {
         redirectToLatestConversation();
     }, [convIdParam, navigate]);
 
+    /* SOCKET JOIN */
+
     useEffect(() => {
         if (!socket || isNaN(conversationId)) return;
 
@@ -96,6 +141,8 @@ export default function ConversationDetail() {
 
         return () => socket.emit("leave_conversation", conversationId);
     }, [socket, conversationId]);
+
+    /* FETCH CONVERSATION INFO */
 
     useEffect(() => {
         const fetchConversationInfo = async () => {
@@ -107,7 +154,8 @@ export default function ConversationDetail() {
                 if (response.success) {
                     const found = response.data.find(
                         (item) =>
-                            item.conversation.conversation_id === conversationId
+                            item.conversation.conversation_id ===
+                            conversationId,
                     );
 
                     if (!found) return;
@@ -122,7 +170,7 @@ export default function ConversationDetail() {
                     } else {
                         const other =
                             conv.participants.find(
-                                (p) => p.user.user_id !== currentUserId
+                                (p) => p.user.user_id !== currentUserId,
                             ) || conv.participants[0];
 
                         name = other?.user.full_name || "Người dùng";
@@ -145,12 +193,65 @@ export default function ConversationDetail() {
         fetchConversationInfo();
     }, [conversationId, currentUserId]);
 
+    /* ✅ FETCH BLOCK STATUS */
+
+    useEffect(() => {
+        const fetchBlockStatus = async () => {
+            if (!conversationId) return;
+
+            try {
+                const response = await getConversationWithBlockStatus(conversationId);
+                if (response.success && response.data) {
+                    setIsBlocking(response.data.isBlocking || false);
+                    setIsBlocked(response.data.isBlocked || false);
+                }
+            } catch (err) {
+                console.error("Lỗi khi lấy trạng thái chặn:", err);
+            }
+        };
+
+        fetchBlockStatus();
+
+        // ✅ Listen for block/unblock events from socket
+        if (socket) {
+            const handleUserBlocked = (data) => {
+                if (data.blocker_id === currentUserId && data.blocked_id === currentConversation?.otherUserId) {
+                    setIsBlocking(true);
+                } else if (data.blocker_id === currentConversation?.otherUserId && data.blocked_id === currentUserId) {
+                    setIsBlocked(true);
+                }
+            };
+
+            const handleUserUnblocked = (data) => {
+                if (data.blocker_id === currentUserId && data.blocked_id === currentConversation?.otherUserId) {
+                    setIsBlocking(false);
+                } else if (data.blocker_id === currentConversation?.otherUserId && data.blocked_id === currentUserId) {
+                    setIsBlocked(false);
+                }
+            };
+
+            socket.on("user_blocked", handleUserBlocked);
+            socket.on("user_unblocked", handleUserUnblocked);
+
+            return () => {
+                socket.off("user_blocked", handleUserBlocked);
+                socket.off("user_unblocked", handleUserUnblocked);
+            };
+        }
+    }, [conversationId, currentUserId, socket, currentConversation?.otherUserId]);
+
+    /* FETCH MESSAGES */
+
     useEffect(() => {
         const fetchMessages = async () => {
             if (!conversationId) return;
 
+            setOffset(0);
+            setHasMore(true);
+
             if (messageCache.current[conversationId]) {
-                setMessages(messageCache.current[conversationId]);
+                const cached = messageCache.current[conversationId];
+                setMessages(cached);
                 return;
             }
 
@@ -184,6 +285,8 @@ export default function ConversationDetail() {
         fetchMessages();
     }, [conversationId]);
 
+    /* LOAD MORE */
+
     const loadMoreMessages = async () => {
         if (loadingMore || !hasMore) return;
 
@@ -207,8 +310,18 @@ export default function ConversationDetail() {
                 if (olderMessages.length > 0) {
                     setMessages((prev) => {
                         const merged = [...olderMessages, ...prev];
-                        messageCache.current[conversationId] = merged;
-                        return merged;
+
+                        const unique = merged.filter(
+                            (msg, index, self) =>
+                                index ===
+                                self.findIndex(
+                                    (m) => m.message_id === msg.message_id,
+                                ),
+                        );
+
+                        messageCache.current[conversationId] = unique;
+
+                        return unique;
                     });
 
                     setOffset(newOffset);
@@ -233,6 +346,23 @@ export default function ConversationDetail() {
             loadMoreMessages();
         }
     };
+
+    /* SEARCH LOGIC */
+
+    useEffect(() => {
+        if (!searchKeyword.trim()) {
+            setSearchResults([]);
+            return;
+        }
+
+        const keyword = searchKeyword.toLowerCase();
+
+        const results = messages.filter((msg) =>
+            msg.content?.toLowerCase().includes(keyword),
+        );
+
+        setSearchResults(results);
+    }, [searchKeyword, messages]);
 
     const formatMessageTime = (dateString) => {
         const date = new Date(dateString);
@@ -270,14 +400,12 @@ export default function ConversationDetail() {
             <ConversationList />
 
             <div className="flex-1 flex overflow-hidden relative">
-
                 {/* CHAT */}
                 <main
                     className={`flex-1 flex flex-col bg-white transition-[margin] duration-300 ${
-                        isInfoOpen ? "mr-[300px]" : ""
+                        isInfoOpen ? "mr-[400px]" : ""
                     }`}
                 >
-
                     {/* HEADER */}
                     <header className="h-[72px] border-b flex items-center justify-between px-6">
                         <div className="flex items-center gap-4">
@@ -294,6 +422,48 @@ export default function ConversationDetail() {
                             <Info size={20} />
                         </button>
                     </header>
+
+                    {/* SEARCH BAR */}
+                    {isSearching && (
+                        <>
+                            <div className="border-b p-3 flex items-center gap-2">
+                                <input
+                                    type="text"
+                                    placeholder="Tìm kiếm tin nhắn..."
+                                    value={searchKeyword}
+                                    onChange={(e) =>
+                                        setSearchKeyword(e.target.value)
+                                    }
+                                    className="flex-1 border rounded px-3 py-2 text-sm"
+                                />
+
+                                <button
+                                    onClick={closeSearch}
+                                    className="p-2 hover:bg-gray-100 rounded"
+                                >
+                                    <X size={18} />
+                                </button>
+                            </div>
+
+                            {searchResults.length > 0 && (
+                                <div className="max-h-[200px] overflow-y-auto border-b bg-white">
+                                    {searchResults.map((msg) => (
+                                        <div
+                                            key={msg.message_id}
+                                            onClick={() =>
+                                                scrollToMessage(
+                                                    msg.message_id,
+                                                )
+                                            }
+                                            className="px-4 py-2 text-sm cursor-pointer hover:bg-gray-100"
+                                        >
+                                            {msg.content?.slice(0, 80)}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </>
+                    )}
 
                     {/* MESSAGES */}
                     <div
@@ -312,19 +482,40 @@ export default function ConversationDetail() {
 
                             const showAvatar =
                                 index === messages.length - 1 ||
-                                messages[index + 1]?.sender_id !== msg.sender_id;
+                                messages[index + 1]?.sender_id !==
+                                    msg.sender_id;
+
+                            const highlight =
+                                msg.message_id === selectedMessageId;
 
                             return (
-                                <MessageItem
-                                    key={msg.message_id || `pending-${index}`}
-                                    msg={msg}
-                                    messages={messages}
-                                    setMessages={setMessages}
-                                    currentUserId={currentUserId}
-                                    isMe={isMe}
-                                    showAvatar={showAvatar}
-                                    formatMessageTime={formatMessageTime}
-                                />
+                                <div
+                                    key={
+                                        msg.message_id || `pending-${index}`
+                                    }
+                                    ref={(el) =>
+                                        (messageRefs.current[
+                                            msg.message_id
+                                        ] = el)
+                                    }
+                                    className={
+                                        highlight
+                                            ? "bg-yellow-100 rounded-lg p-2"
+                                            : ""
+                                    }
+                                >
+                                    <MessageItem
+                                        msg={msg}
+                                        messages={messages}
+                                        setMessages={setMessages}
+                                        currentUserId={currentUserId}
+                                        isMe={isMe}
+                                        showAvatar={showAvatar}
+                                        formatMessageTime={
+                                            formatMessageTime
+                                        }
+                                    />
+                                </div>
                             );
                         })}
                     </div>
@@ -335,25 +526,39 @@ export default function ConversationDetail() {
                         messageInput={messageInput}
                         setMessageInput={setMessageInput}
                         socket={socket}
+                        isBlocking={isBlocking}
+                        isBlocked={isBlocked}
                         onSendMessage={(optimisticMsgs) => {
                             setMessages((prev) => {
-                                const updated = [...prev, ...optimisticMsgs];
-                                messageCache.current[conversationId] = updated;
+                                const updated = [
+                                    ...prev,
+                                    ...optimisticMsgs,
+                                ];
+                                messageCache.current[
+                                    conversationId
+                                ] = updated;
                                 return updated;
                             });
 
-                            setTimeout(() => scrollToBottom(true), 100);
+                            setTimeout(
+                                () => scrollToBottom(true),
+                                100,
+                            );
                         }}
                     />
                 </main>
 
                 {/* INFO PANEL */}
                 <aside
-                    className={`absolute right-0 top-0 h-full w-[300px] border-l bg-white flex flex-col
+                    className={`absolute right-0 top-0 h-full w-[400px] border-l bg-white flex flex-col
                     transition-transform duration-300 z-30
                     ${isInfoOpen ? "translate-x-0" : "translate-x-full"}`}
                 >
-                    <ConversationInfo onClose={() => setIsInfoOpen(false)} />
+                    <ConversationInfo
+                        conversation_id={conversationId}
+                        onClose={() => setIsInfoOpen(false)}
+                        onSearch={() => setIsSearching(true)}
+                    />
                 </aside>
 
                 {isInfoOpen && (
@@ -366,4 +571,3 @@ export default function ConversationDetail() {
         </div>
     );
 }
-

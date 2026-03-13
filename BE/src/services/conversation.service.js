@@ -437,6 +437,148 @@ const updateConversation = async (conversation_id, user_id, data) => {
     }
 }
 
+const dataOfConversation = async (conversation_id) => {
+    try {
+        const conversation = await conversationReponsitory.findById(conversation_id)
+        if(!conversation) {
+            throw {
+                statusCode: 404,
+                message: "Cuộc trò chuyện không tồn tại"
+            }
+        }
+
+        const data = await conversationReponsitory.dataOfConversation(conversation_id)
+        return data
+    } catch (error) {
+        throw error
+    }
+}
+
+const conversationStorage = async (conversation_id) => {
+    try {
+        const conversation = await conversationReponsitory.findById(conversation_id)
+        if(!conversation) {
+            throw {
+                statusCode: 404,
+                message: "Cuộc trò chuyện không tồn tại"
+            }
+        }
+
+        const data = await conversationReponsitory.conversationStorage(conversation_id)
+        return data
+    } catch (error) {
+        throw error
+    }
+}
+
+const memberOfConversation = async (conversation_id) => {
+    try {
+        const conversation = await conversationReponsitory.findById(conversation_id)
+        if(!conversation) {
+            throw {
+                statusCode: 404,
+                message: "Cuộc trò chuyện không tồn tại"
+            }
+        }
+
+        const data = await conversationReponsitory.memberOfConversation(conversation_id)
+        return data
+    } catch (error) {
+        throw error
+    }
+}
+
+const AdminInfo = async (conversation_id) => {
+    try {
+        const conversation = await conversationReponsitory.findById(conversation_id)
+        if(!conversation) {
+            throw {
+                statusCode: 404,
+                message: "Cuộc trò chuyện không tồn tại"
+            }
+        }
+
+        const data = await conversationReponsitory.AdminInfo(conversation_id)
+        return data
+    } catch (error) {
+        throw error
+    }
+}
+
+const deleteHistoryOfConversation = async (conversation_id) => {
+    try {
+        const conversation = await conversationReponsitory.findById(conversation_id)
+        if(!conversation) {
+            throw {
+                statusCode: 404,
+                message: "Cuộc trò chuyện không tồn tại"
+            }
+        }
+
+        const data = await conversationReponsitory.deleteHistoryOfConversation(conversation_id)
+        return data
+    } catch (error) {
+        throw error
+    }
+}
+
+const searchMessage = async (conversation_id, keyword) => {
+    try {
+        const conversation = await conversationReponsitory.findById(conversation_id)
+        if(!conversation) {
+            throw {
+                statusCode: 404,
+                message: "Cuộc trò chuyện không tồn tại"
+            }
+        }
+
+        const data = await conversationReponsitory.searchMessage(conversation_id, keyword)
+        return data
+    } catch (error) {
+        throw error
+    }
+}
+
+const deleteGroup = async (conversation_id) => {
+    try {
+        const conversation = await conversationReponsitory.findById(conversation_id)
+        if(!conversation) {
+            throw {
+                statusCode: 404,
+                message: "Cuộc trò chuyện không tồn tại"
+            }
+        }
+
+        await conversationReponsitory.deleteGroup(conversation_id)
+        return {
+            message: "Xóa nhóm thành công"
+        }
+    } catch (error) {
+        throw error
+    }
+}
+
+// ✅ Get conversation details with block status
+const getConversationWithBlockStatus = async ({conversation_id, user_id}) => {
+    try {
+        const conversation = await conversationReponsitory.getConversationWithBlockStatus(
+            conversation_id,
+            user_id
+        );
+        
+        if (!conversation) {
+            throw {
+                statusCode: 404,
+                message: "Cuộc trò chuyện không tồn tại"
+            };
+        }
+
+        return conversation;
+    } catch (error) {
+        throw error;
+    }
+}
+
 module.exports = {
     createNewGroupConversation,
     createNewConversation,
@@ -451,5 +593,13 @@ module.exports = {
     AllMessageOfConversation,
     listConversation,
     findById,
-    updateConversation
+    updateConversation,
+    dataOfConversation,
+    conversationStorage,
+    memberOfConversation,
+    AdminInfo,
+    deleteHistoryOfConversation,
+    searchMessage,
+    deleteGroup,
+    getConversationWithBlockStatus,
 };

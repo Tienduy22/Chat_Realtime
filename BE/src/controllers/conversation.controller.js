@@ -49,6 +49,7 @@ const addMember = async (req, res, next) => {
 
 const deleteMember = async (req, res, next) => {
     try {
+        console.log(req.body)
         const result = await conversationService.deleteMember(req.body);
 
         return res.status(201).json({
@@ -217,6 +218,137 @@ const updateConversation = async (req, res, next) => {
     }
 };
 
+const dataOfConversation = async (req, res, next) => {
+    try {
+        const result = await conversationService.dataOfConversation(
+            req.query.conversation_id
+        );
+
+        return res.status(201).json({
+            success: true,
+            message: "Lấy data thành công",
+            data: result,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const conversationStorage = async (req, res, next) => {
+    try {
+        const result = await conversationService.conversationStorage(
+            req.query.conversation_id
+        );
+
+        return res.status(201).json({
+            success: true,
+            message: "Lấy data thành công",
+            data: result,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const memberOfConversation = async (req, res, next) => {
+    try {
+        const result = await conversationService.memberOfConversation(
+            req.query.conversation_id
+        );
+
+        return res.status(201).json({
+            success: true,
+            message: "Lấy data thành công",
+            data: result,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const AdminInfo = async (req, res, next) => {
+    try {
+        const result = await conversationService.AdminInfo(
+            req.query.conversation_id
+        );
+
+        return res.status(201).json({
+            success: true,
+            message: "Lấy data thành công",
+            data: result,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const deleteHistoryOfConversation = async (req, res, next) => {
+    try {
+        const result = await conversationService.deleteHistoryOfConversation(
+            req.body.conversation_id,
+        );
+
+        return res.status(201).json({
+            success: true,
+            message: "Xóa thành công",
+            data: result,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const searchMessage = async (req, res, next) => {
+    try {
+        const result = await conversationService.searchMessage(
+            req.query.conversation_id,
+            req.query.keyword
+        );
+
+        return res.status(201).json({
+            success: true,
+            message: "Lấy data thành công",
+            data: result,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const deleteGroup = async (req, res, next) => {
+    try {
+        const result = await conversationService.deleteGroup(
+            req.body.conversation_id,
+        );
+
+        return res.status(201).json({
+            success: true,
+            message: "Xóa nhóm thành công",
+            data: result,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// ✅ Get conversation with block status
+const getConversationWithBlockStatus = async (req, res, next) => {
+    try {
+        const result = await conversationService.getConversationWithBlockStatus({
+            conversation_id: Number(req.query.conversation_id),
+            user_id: req.user.user_id,
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: "Lấy data hội thoại thành công",
+            data: result,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     createNewGroupConversation,
     createNewConversation,
@@ -231,5 +363,13 @@ module.exports = {
     AllMessageOfConversation,
     listConversation,
     findById,
-    updateConversation
+    updateConversation,
+    dataOfConversation,
+    conversationStorage,
+    memberOfConversation,
+    AdminInfo,
+    deleteHistoryOfConversation,
+    searchMessage,
+    deleteGroup,
+    getConversationWithBlockStatus,
 };

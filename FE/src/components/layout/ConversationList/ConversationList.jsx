@@ -30,7 +30,13 @@ const ConversationList = () => {
             try {
                 const response = await listConversation();
                 if (response.success) {
-                    setConversations(response.data);
+                    const filtered = response.data.filter(
+                        (item) =>
+                            item.conversation?.messages &&
+                            item.conversation.messages.length > 0,
+                    );
+
+                    setConversations(filtered);
                 } else {
                     setError("Không thể tải danh sách cuộc trò chuyện");
                 }
@@ -110,7 +116,7 @@ const ConversationList = () => {
             senderName = sender.full_name;
         } else if (participants) {
             const found = participants.find(
-                (p) => p.user.user_id === lastMsg.sender_id
+                (p) => p.user.user_id === lastMsg.sender_id,
             );
             if (found) senderName = found.user.full_name;
         }
@@ -151,7 +157,7 @@ const ConversationList = () => {
 
         const otherUser =
             conv.participants.find(
-                (p) => p.user.user_id !== conv.current_user_id
+                (p) => p.user.user_id !== conv.current_user_id,
             )?.user || conv.participants[0].user;
 
         return {
@@ -208,8 +214,8 @@ const ConversationList = () => {
         <aside className="w-80 bg-gray-50 dark:bg-sidebar-panel-dark border-r border-gray-200 dark:border-gray-800 flex flex-col hidden lg:flex flex-shrink-0">
             <div className="p-6 pb-2">
                 <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
-                        Messages
+                    <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                        Tin nhắn
                     </h2>
                 </div>
 
@@ -243,7 +249,7 @@ const ConversationList = () => {
                     const display = getConversationDisplay(conv);
                     const preview = getLastMessagePreview(
                         conv.messages,
-                        conv.participants
+                        conv.participants,
                     );
                     const time =
                         conv.messages && conv.messages.length > 0
