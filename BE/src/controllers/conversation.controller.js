@@ -317,8 +317,10 @@ const searchMessage = async (req, res, next) => {
 
 const deleteGroup = async (req, res, next) => {
     try {
+        const admin_id = req.body.admin_id || req.user?.user_id;
         const result = await conversationService.deleteGroup(
             req.body.conversation_id,
+            admin_id
         );
 
         return res.status(201).json({

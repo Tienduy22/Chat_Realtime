@@ -151,6 +151,7 @@ const findAllMemberOfGroup = async (conversation_id) => {
         const memberOfGroup = await ConversationParticipant.findAll({
             where: {
                 conversation_id: conversation_id,
+                is_active: true,  // 👈 Chỉ lấy active members
             },
         });
 

@@ -156,11 +156,6 @@ export const newGroup = async (data) => {
             formData.append("image", data.avatar_url);
         }
 
-        console.log("Data gửi lên server (FormData):");
-        for (let [key, value] of formData.entries()) {
-            console.log(`${key}:`, value);
-        }
-
         const response = await axios.post(
             "http://localhost:5000/api/conversation/new_group",
             formData,
@@ -205,6 +200,25 @@ export const unBlockFriend = async (user_id, friend_id) => {
         return response.data;
     } catch (error) {
         console.error("Đã xảy ra lỗi khi lấy dữ liệu:", error);
+        throw error;
+    }
+};
+
+export const removeFriend = async (user_id, friend_id) => {
+    try {
+        const response = await axios.post(
+            "http://localhost:5000/api/contact/remove-friend",
+            {
+                user_id,
+                friend_id,
+            },
+            {
+                withCredentials: true,
+            },
+        );
+        return response.data;
+    } catch (error) {
+        console.error("Đã xảy ra lỗi khi hủy kết bạn:", error);
         throw error;
     }
 };

@@ -27,4 +27,6 @@ router.get('/list_blocked', contactController.listBlocked)
 
 router.delete('/invitations', contactController.removeInvitations)
 
+router.post('/remove-friend', contactController.removeFriend)
+
 module.exports = router;

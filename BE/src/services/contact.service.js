@@ -1,9 +1,9 @@
 const contactReponsitory = require("../repositories/contact.reponsitory");
 const notificationReponsitory = require("../repositories/notification.reponsitory");
-const userRepossitory = require("../repositories/user.reponsitory");
+const userReponsitory = require("../repositories/user.reponsitory");
 const blockedUserReponsitory = require("../repositories/blockedUser.reponsitory");
 const conversationReponsitory = require("../repositories/conversation.reponsitory")
-
+const { emitFriendRequest, emitFriendAccepted, emitFriendRejected, emitFriendRemoved } = require("../socket/notificationHandlers")
 const sendInvitations = async ({ user_id, contact_user_id }) => {
     try {
         if (user_id === contact_user_id) {
@@ -13,7 +13,7 @@ const sendInvitations = async ({ user_id, contact_user_id }) => {
             };
         }
 
-        const contactUser = await userRepossitory.findById(contact_user_id);
+        const contactUser = await userReponsitory.findById(contact_user_id);
         if (!contactUser || !contactUser.is_active) {
             throw { statusCode: 404, message: "User không tồn tại" };
         }
@@ -40,34 +40,10 @@ const sendInvitations = async ({ user_id, contact_user_id }) => {
             contact_user_id
         );
 
-        const user = await userRepossitory.findById(user_id);
-
-        const content = `${user.username} đã gửi lời mời kết bạn`;
-        const notification =
-            await notificationReponsitory.notificationSendInvite(
-                contact_user_id,
-                content,
-                user_id
-            );
+        const user = await userReponsitory.findById(user_id);
 
         const io = global.io;
-        if (io) {
-            io.to(`user:${contact_user_id}`).emit("friend_request_received", {
-                notification_id: notification.notification_id,
-                type: "friend_request",
-                title: "Lời mời kết bạn",
-                content: content,
-                from_user: {
-                    user_id: user.user_id,
-                    username: user.username,
-                    full_name: user.full_name,
-                    avatar_url: user.avatar_url,
-                },
-                contact_id: contact.contact_id,
-                reference_id: user_id,
-                created_at: new Date(),
-            });
-        }
+        await emitFriendRequest(io, user_id, contact_user_id);
 
         return {
             contact: {
@@ -78,7 +54,6 @@ const sendInvitations = async ({ user_id, contact_user_id }) => {
                 created_at: contact.created_at,
             },
             notification: {
-                notification_id: notification.notification_id,
                 message: "Đã gửi lời mời kết bạn",
             },
         };
@@ -89,8 +64,8 @@ const sendInvitations = async ({ user_id, contact_user_id }) => {
 
 const acceptInvitations = async ({ user_id, contact_user_id }) => {
     try {
-        const contactUser = await userRepossitory.findById(contact_user_id);
-        const user = await userRepossitory.findById(user_id);
+        const contactUser = await userReponsitory.findById(contact_user_id);
+        const user = await userReponsitory.findById(user_id);
         if (!contactUser) {
             throw {
                 statusCode: 404,
@@ -121,34 +96,14 @@ const acceptInvitations = async ({ user_id, contact_user_id }) => {
             contactUser.user_id
         );
 
-        const content = `${user.username} đã chấp nhận lời mời kết bạn`;
-        const notification =
-            await notificationReponsitory.notificationAcceptInvite(
-                contactUser.user_id,
-                content,
-                user.user_id
-            );
+        await notificationReponsitory.notificationAcceptInvite(
+            contact_user_id,
+            `${user.full_name} đã chấp nhận lời mời kết bạn`,
+            user_id,
+        );
 
         const io = global.io;
-        if (io) {
-            io.to(`user:${contactUser.user_id}`).emit(
-                "friend_request_accepted",
-                {
-                    notification_id: notification.notification_id,
-                    type: "friend_request",
-                    title: "Lời mời được chấp nhận",
-                    content: content,
-                    from_user: {
-                        user_id: user.user_id,
-                        username: user.username,
-                        full_name: user.full_name,
-                        avatar_url: user.avatar_url,
-                    },
-                    reference_id: user_id,
-                    created_at: notification.created_at,
-                }
-            );
-        }
+        await emitFriendAccepted(io, user_id, contactUser.user_id);
 
         await conversationReponsitory.createNewConversation(user_id, contact_user_id)
 
@@ -167,6 +122,12 @@ const rejectInvitations = async ({ contact_id }) => {
             throw { statusCode: 404, message: "Lời mời không tồn tại" };
         }
         await contactReponsitory.rejectInvitations(contact.contact_id);
+
+        const io = global.io;
+        if (io) {
+            // Gửi notification cho người gửi lời mời về việc bị từ chối
+            await emitFriendRejected(io, contact.contact_user_id, contact.user_id);
+        }
 
         return {
             message: "Từ chối lời mời kết bạn",
@@ -314,6 +275,35 @@ const removeInvitations = async ({contact_id}) => {
     }
 };
 
+const removeFriend = async ({ user_id, friend_id }) => {
+    try {
+        const contact = await contactReponsitory.findByUserIdAndContactUserId(
+            user_id,
+            friend_id
+        );
+        if (!contact) {
+            throw {
+                statusCode: 404,
+                message: "Không tìm thấy mối quan hệ bạn bè",
+            };
+        }
+
+        await contactReponsitory.removeFriend(user_id, friend_id);
+
+        // ✅ Emit socket event for real-time update
+        const io = global.io;
+        if (io) {
+            await emitFriendRemoved(io, user_id, friend_id);
+        }
+
+        return {
+            message: "Hủy kết bạn thành công",
+        };
+    } catch (error) {
+        throw error;
+    }
+};
+
 
 module.exports = {
     sendInvitations,
@@ -327,5 +317,6 @@ module.exports = {
     findContactByPhone,
     findSendInvitations,
     findInvitations,
-    removeInvitations
+    removeInvitations,
+    removeFriend
 };

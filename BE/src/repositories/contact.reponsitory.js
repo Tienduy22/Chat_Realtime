@@ -212,6 +212,23 @@ const removeInvitations = async (contact_id) => {
     }
 };
 
+const removeFriend = async (user_id, friend_id) => {
+    try {
+        // Delete both directions of the friendship
+        const result = await Contact.destroy({
+            where: {
+                [require('sequelize').Op.or]: [
+                    { user_id: user_id, contact_user_id: friend_id },
+                    { user_id: friend_id, contact_user_id: user_id }
+                ]
+            }
+        });
+        return result;
+    } catch (error) {
+        throw error;
+    }
+};
+
 module.exports = {
     findById,
     findByPhone,
@@ -224,5 +241,6 @@ module.exports = {
     listGroup,
     findSendInvitations,
     findInvitations,
-    removeInvitations
+    removeInvitations,
+    removeFriend
 };

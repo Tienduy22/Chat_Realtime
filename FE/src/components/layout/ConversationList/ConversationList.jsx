@@ -15,7 +15,7 @@ const ConversationList = () => {
     const [onlineUsers, setOnlineUsers] = useState(new Set());
     const [lastSeen, setLastSeen] = useState(new Map());
 
-    const { socket } = useSocket();
+    const socket = useSocket();
 
     const navigate = useNavigate();
     const location = useLocation();

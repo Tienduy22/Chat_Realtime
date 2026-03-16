@@ -41,7 +41,7 @@ export const useSocket = () => {
     if (!context) {
         throw new Error("useSocket must be used within SocketProvider");
     }
-    return context;
+    return context.socket;
 };
 
 export const SocketProvider = () => {

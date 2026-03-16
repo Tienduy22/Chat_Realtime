@@ -43,7 +43,8 @@ export const markAsRead = async (conversationId, lastUnreadId, currentUserId) =>
     try {
         const response = await axios.post(
             "http://localhost:5000/api/message/seem_message",
-            { conversation_id: conversationId, message_ids: lastUnreadId, user_id: currentUserId }
+            { conversation_id: conversationId, message_ids: lastUnreadId, user_id: currentUserId },
+            { withCredentials: true }
         );
         return response.data; 
     } catch (error) {
@@ -57,7 +58,8 @@ export const reactionMessage = async (conversation_id, user_id, message_id, emoj
     try {
         const response = await axios.post(
             "http://localhost:5000/api/message/reaction_message",
-            { conversation_id, message_id, user_id, emoji }
+            { conversation_id, message_id, user_id, emoji },
+            { withCredentials: true }
         );
         return response.data; 
     } catch (error) {
@@ -70,7 +72,8 @@ export const editMessage = async (conversation_id, user_id, message_id, content)
     try {
         const response = await axios.post(
             "http://localhost:5000/api/message/edit_message",
-            { conversation_id, message_id, user_id, content }
+            { conversation_id, message_id, user_id, content },
+            { withCredentials: true }
         );
         return response.data; 
     } catch (error) {

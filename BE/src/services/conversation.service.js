@@ -2,6 +2,7 @@ const conversationReponsitory = require("../repositories/conversation.reponsitor
 const userReponsitory = require("../repositories/user.reponsitory");
 const blockedUserReponsitory = require("../repositories/blockedUser.reponsitory");
 const messageReponsitory = require("../repositories/message.reponsitory");
+const { emitGroupDelete, emitGroupInvite } = require("../socket/notificationHandlers");
 
 const createNewGroupConversation = async (data, image) => {
     try {
@@ -39,6 +40,16 @@ const createNewGroupConversation = async (data, image) => {
                 name,
                 avatar_url
             );
+
+        // Gửi thông báo cho các thành viên (trừ người tạo)
+        const io = global.io;
+        if (io) {
+            for (const member_id of member_ids) {
+                if (member_id !== admin_id) {
+                    await emitGroupInvite(io, member_id, groupConversation, admin);
+                }
+            }
+        }
 
         return groupConversation;
     } catch (error) {
@@ -114,6 +125,14 @@ const addMember = async ({conversation_id, admin_id, member_id}) => {
         }
 
         const newMember = await conversationReponsitory.addMember(conversation_id, member_id)
+        
+        // Emit group invite notification
+        const admin = await userReponsitory.findById(admin_id)
+        const io = global.io;
+        if (io && admin) {
+            await emitGroupInvite(io, member_id, conversation, admin);
+        }
+        
         return newMember
     } catch (error) {
         throw error
@@ -542,6 +561,7 @@ const searchMessage = async (conversation_id, keyword) => {
 const deleteGroup = async (conversation_id) => {
     try {
         const conversation = await conversationReponsitory.findById(conversation_id)
+        const admin = await conversationReponsitory.AdminInfo(conversation_id)
         if(!conversation) {
             throw {
                 statusCode: 404,
@@ -549,6 +569,8 @@ const deleteGroup = async (conversation_id) => {
             }
         }
 
+        const participants = await conversationReponsitory.findAllMemberOfGroup(conversation_id)
+        
         await conversationReponsitory.deleteGroup(conversation_id)
         return {
             message: "Xóa nhóm thành công"

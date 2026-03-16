@@ -168,6 +168,20 @@ const removeInvitations = async (req, res, next) => {
     }
 };
 
+const removeFriend = async (req, res, next) => {
+    try {
+        const result = await contactService.removeFriend(req.body);
+
+        return res.status(201).json({
+            success: true,
+            message: "Hủy kết bạn thành công",
+            data: result, 
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     sendInvitations,
     acceptInvitations,
@@ -180,5 +194,6 @@ module.exports = {
     findContactByPhone,
     findSendInvitations,
     findInvitations,
-    removeInvitations
+    removeInvitations,
+    removeFriend
 }

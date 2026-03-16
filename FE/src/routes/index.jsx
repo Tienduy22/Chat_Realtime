@@ -8,6 +8,7 @@ import ProtectedRoute from "./ProtectedRoute";
 
 // Contexts
 import { SocketProvider } from "../context/SocketContext";
+import { NotificationProvider } from "../context/NotificationContext";
 
 // Pages
 import Loading from "../components/common/Loading/Loading";
@@ -110,7 +111,7 @@ const AppRouter = () => {
                 {/* Protected Routes - cần đăng nhập */}
                 <Route element={<ProtectedRoute />}>
                     <Route element={<SocketProvider />}>
-                        <Route element={<MainLayout />}>
+                        <Route element={<NotificationProvider><MainLayout /></NotificationProvider>}>
                             {routeConfig.protected.map(
                                 ({ path, element: Element, redirect }) => {
                                     if (redirect) {

@@ -3,11 +3,16 @@ import { useDispatch } from "react-redux";
 import { useNavigate, useLocation } from "react-router-dom";
 import { removeUser } from "../../../Redux/reducers/userReducer";
 import { listConversation } from "../../../services/conversation.service";
+import NotificationIcon from "../../notification/NotificationIcon";
+import { useNotificationSocket } from "../../../hooks/useNotificationSocket";
 
 const Sidebar = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const dispatch = useDispatch();
+    
+    // Initialize notification socket listener
+    useNotificationSocket();
 
     const handleProfileClick = () => {
         navigate("/profile");
@@ -94,6 +99,9 @@ const Sidebar = () => {
                         Peoples
                     </div>
                 </button>
+
+                {/* NOTIFICATIONS */}
+                <NotificationIcon />
             </div>
 
             {/* Bottom */}

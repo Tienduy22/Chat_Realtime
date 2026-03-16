@@ -16,7 +16,10 @@ const createMessage = async (req, res, next) => {
 
 const markAsRead = async (req, res, next) => {
     try {
-        const result = await messageService.markAsRead(req.body);
+        const result = await messageService.markAsRead({
+            ...req.body,
+            user_id: req.user.user_id
+        });
 
         return res.status(201).json({
             success: true,
@@ -30,7 +33,10 @@ const markAsRead = async (req, res, next) => {
 
 const deleteMessage = async (req, res, next) => {
     try {
-        const result = await messageService.deleteMessage(req.body);
+        const result = await messageService.deleteMessage({
+            ...req.body,
+            user_id: req.user.user_id
+        });
 
         return res.status(201).json({
             success: true,
@@ -44,7 +50,10 @@ const deleteMessage = async (req, res, next) => {
 
 const editMessage = async (req, res, next) => {
     try {
-        const result = await messageService.editMessage(req.body);
+        const result = await messageService.editMessage({
+            ...req.body,
+            user_id: req.user.user_id
+        });
 
         return res.status(201).json({
             success: true,
@@ -58,8 +67,10 @@ const editMessage = async (req, res, next) => {
 
 const reactionMessage = async (req, res, next) => {
     try {
-        console.log(req.body)
-        const result = await messageService.reactionMessage(req.body);
+        const result = await messageService.reactionMessage({
+            ...req.body,
+            user_id: req.user.user_id
+        });
         
         return res.status(201).json({
             success: true,

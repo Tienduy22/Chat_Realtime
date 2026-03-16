@@ -13,7 +13,7 @@ export default function FriendRequestsReceived() {
     const [sentRequests, setSentRequests] = useState([]);
     const [invitations, setInvitations] = useState([]);
     const [refresh, setRefresh] = useState(false);
-    const { socket, isConnected } = useSocket();
+    const socket = useSocket();
 
     const user = useSelector((state) => state.user);
 
@@ -21,7 +21,6 @@ export default function FriendRequestsReceived() {
         const fetchSendInvitations = async () => {
             try {
                 const response = await findSendInvitations(user.user_id);
-                console.log(response.data);
                 setSentRequests(response?.data || []);
             } catch (error) {
                 console.error("Lỗi lấy lời mời đã gửi:", error);

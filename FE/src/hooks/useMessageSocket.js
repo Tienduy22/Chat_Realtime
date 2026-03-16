@@ -5,6 +5,7 @@ export function useMessageSocket(
     conversationId,
     currentUserId,
     setMessages,
+    messageCache
 ) {
     // NEW MESSAGE
     useEffect(() => {
@@ -37,15 +38,15 @@ export function useMessageSocket(
                     else break;
                 }
 
+                let updated = [...prev];
+                
                 if (
                     pendingIndices.length === realMessages.length &&
                     pendingIndices.length > 0
                 ) {
-                    const updated = [...prev];
                     pendingIndices.forEach(
                         (idx, i) => (updated[idx] = realMessages[i]),
                     );
-                    return updated;
                 } else {
                     // Tin nhắn mới từ người khác
                     const existingIds = new Set(prev.map((m) => m.message_id));
@@ -53,14 +54,21 @@ export function useMessageSocket(
                         (msg) => !existingIds.has(msg.message_id),
                     );
                     if (newMsgs.length === 0) return prev;
-                    return [...prev, ...newMsgs];
+                    updated = [...prev, ...newMsgs];
                 }
+                
+                // 💾 Update cache when messages change
+                if (messageCache?.current) {
+                    messageCache.current[conversationId] = updated;
+                }
+                
+                return updated;
             });
         };
 
         socket.on("new_message", handleNewMessage);
         return () => socket.off("new_message", handleNewMessage);
-    }, [socket, conversationId, setMessages]);
+    }, [socket, conversationId, setMessages, messageCache]);
 
     // REACTION
     const handleAddReaction = useCallback(

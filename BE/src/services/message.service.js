@@ -2,10 +2,14 @@ const messageReponsitory = require("../repositories/message.reponsitory");
 const conversationReponsitory = require("../repositories/conversation.reponsitory");
 const userReponsitory = require("../repositories/user.reponsitory");
 const blockedUserReponsitory = require("../repositories/blockedUser.reponsitory");
+const { emitNewMessage, emitMessageReaction } = require("../socket/notificationHandlers");
 
 const createMessage = async (req) => {
     try {
-        const { conversation_id, sender_id } = req.body;
+        const { conversation_id } = req.body;
+        // Lấy sender_id từ authenticated user, không dùng từ request body
+        const sender_id = req.user.user_id;
+        
         const conversation =
             await conversationReponsitory.findById(conversation_id);
         if (!conversation) {
@@ -181,6 +185,7 @@ const createMessage = async (req) => {
                     full_name: sender.full_name,
                     avatar_url: sender.avatar_url,
                 },
+                sender_id: sender_id,
             };
 
             participants.forEach((member) => {
@@ -190,10 +195,21 @@ const createMessage = async (req) => {
                 );
             });
 
-            io.to(`conversation:${conversation_id}`).emit(
-                "new_message",
-                payload,
-            );
+            const notificationRecipients = participants.filter(p => p.user_id !== sender_id);
+            
+            console.log('📢 Group Message Debug:', {
+                conversation_id,
+                conversation_type: conversation?.conversation_type,
+                group_name: conversation?.name,
+                sender_id,
+                total_participants: participants.length,
+                notification_recipients: notificationRecipients.length,
+                recipients_ids: notificationRecipients.map(r => r.user_id),
+            });
+
+            for (const message of result) {
+                await emitNewMessage(io, message, notificationRecipients, conversation, sender_id);
+            }
         }
 
         return result;
@@ -391,6 +407,21 @@ const reactionMessage = async ({
                         emoji: emoji,
                     },
                 );
+
+                // Emit notification for reaction
+                const reactionWithUser = {
+                    ...reaction,
+                    user_id: user_id,
+                    emoji: emoji,
+                };
+
+                // Lấy danh sách participants để gửi notification
+                const participants = await conversationReponsitory.findAllMemberOfGroup(conversation_id);
+
+                console.log('reactionWithUser: ', reactionWithUser)
+                console.log('emoji: ', emoji)
+                console.log('participants: ', participants)
+                await emitMessageReaction(io, reactionWithUser, message, participants);
             } else {
                 console.error("❌ global.io is undefined");
             }

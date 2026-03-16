@@ -18,7 +18,7 @@ export default function ConversationDetail() {
     const conversationId = Number(convIdParam);
 
     const navigate = useNavigate();
-    const { socket } = useSocket();
+    const socket = useSocket();
 
     const [messages, setMessages] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -54,7 +54,7 @@ export default function ConversationDetail() {
 
     const LIMIT = 20;
 
-    useMessageSocket(socket, conversationId, currentUserId, setMessages);
+    useMessageSocket(socket, conversationId, currentUserId, setMessages, messageCache);
 
     /* SCROLL */
 
@@ -251,7 +251,13 @@ export default function ConversationDetail() {
 
             if (messageCache.current[conversationId]) {
                 const cached = messageCache.current[conversationId];
-                setMessages(cached);
+                // 🔧 Clean up pending messages từ cache cũ
+                const cleanedMessages = cached.map(msg => ({
+                    ...msg,
+                    isPending: false,
+                }));
+                setMessages(cleanedMessages);
+                messageCache.current[conversationId] = cleanedMessages;
                 return;
             }
 

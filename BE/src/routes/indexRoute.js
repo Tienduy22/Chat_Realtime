@@ -3,6 +3,7 @@ const userRouter = require('./userRoute')
 const contactRouter = require('./contactRoute')
 const conversationRouter = require('./conversationRoute')
 const messageRouter = require('./messageRoute')
+const notificationRouter = require('./notificationRoute')
 
 const initRoutes = (app) => {
     app.use('/api/auth', authRouter);
@@ -10,6 +11,7 @@ const initRoutes = (app) => {
     app.use('/api/contact', contactRouter)
     app.use('/api/conversation', conversationRouter)
     app.use('/api/message', messageRouter)
+    app.use('/api/notifications', notificationRouter)
 };
 
 module.exports = initRoutes;

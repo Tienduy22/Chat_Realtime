@@ -24,6 +24,7 @@ const MessageInput = ({
     const [showGifPicker, setShowGifPicker] = useState(false);
     const [gifSearchQuery, setGifSearchQuery] = useState("");
     const [previewModalUrl, setPreviewModalUrl] = useState(null);
+    const [isDraggingOver, setIsDraggingOver] = useState(false);
 
     const fileInputRef = useRef(null);
     const emojiPickerRef = useRef(null);
@@ -284,6 +285,36 @@ const MessageInput = ({
         handleMarkAsRead();
     };
 
+    // Xử lý drag đặt file
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDraggingOver(true);
+    };
+
+    const handleDragLeave = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDraggingOver(false);
+    };
+
+    const handleDrop = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDraggingOver(false);
+
+        const files = Array.from(e.dataTransfer.files || []);
+        if (files.length === 0) return;
+
+        const previews = files.map((file) => ({
+            file,
+            url: URL.createObjectURL(file),
+            name: file.name,
+            type: file.type || "application/octet-stream",
+        }));
+        setSelectedFiles((prev) => [...prev, ...previews]);
+    };
+
     // Reset khi chuyển cuộc trò chuyện
     useEffect(() => {
         hasMarkedRead.current = false;
@@ -374,11 +405,14 @@ const MessageInput = ({
                     onChange={handleInputChange}
                     onKeyDown={handleKeyDown}
                     onFocus={handleTextareaFocus}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
                     disabled={isBlocking || isBlocked}
-                    placeholder={isBlocking || isBlocked ? "Không thể gửi tin nhắn" : "Nhập tin nhắn..."}
-                    className={`w-full bg-transparent border-none focus:outline-none text-slate-800 placeholder:text-slate-500/60 resize-none h-12 py-3 px-4 scrollbar-thin ${
+                    placeholder={isBlocking || isBlocked ? "Không thể gửi tin nhắn" : "Nhập tin nhắn hoặc kéo file vào đây..."}
+                    className={`w-full bg-transparent border-none focus:outline-none text-slate-800 placeholder:text-slate-500/60 resize-none h-12 py-3 px-4 scrollbar-thin transition-all ${
                         (isBlocking || isBlocked) ? "opacity-50 cursor-not-allowed" : ""
-                    }`}
+                    } ${isDraggingOver ? "bg-blue-50/50" : ""}`}
                 />
 
                 <div className="flex items-center justify-between px-2 pb-1">

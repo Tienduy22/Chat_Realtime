@@ -16,6 +16,7 @@ import {
     sendInvitations,
 } from "../../services/contact.service";
 import FriendCard from "../../components/contact/FriendCard";
+import { useSocket } from "../../context/SocketContext";
 
 export default function FriendsList() {
     const [friends, setFriends] = useState([]);
@@ -30,7 +31,9 @@ export default function FriendsList() {
     const [successMsg, setSuccessMsg] = useState("");
 
     const user = useSelector((state) => state.user);
+    const socket = useSocket();
 
+    // Fetch friends
     useEffect(() => {
         const fetchFriends = async () => {
             try {
@@ -42,6 +45,35 @@ export default function FriendsList() {
         };
         if (user?.user_id) fetchFriends();
     }, [user.user_id]);
+
+    // Listen socket event for friend removed
+    useEffect(() => {
+        if (!socket) {
+            console.log("⏭️ Socket not ready yet");
+            return;
+        }
+
+        const handleFriendRemoved = (data) => {
+            console.log("📢 Friend removed event received:", data);
+            // Remove the friend from the list
+            setFriends((prevFriends) =>
+                prevFriends.filter((friend) => friend.contact_user_id !== data.removed_user_id)
+            );
+        };
+
+        socket.on("friend_removed", handleFriendRemoved);
+
+        return () => {
+            socket.off("friend_removed", handleFriendRemoved);
+        };
+    }, [socket]);
+
+    // Handle friend removed locally when button is clicked
+    const handleFriendRemoved = (friendId) => {
+        setFriends((prevFriends) =>
+            prevFriends.filter((friend) => friend.contact_user_id !== friendId)
+        );
+    };
 
     const filteredFriends = friends.filter((friend) => {
         const searchLower = searchTerm.toLowerCase().trim();
@@ -180,6 +212,7 @@ export default function FriendsList() {
                             <FriendCard
                                 key={friend.id || friend.contactUser?.user_id}
                                 friend={friend}
+                                onFriendRemoved={handleFriendRemoved}
                             />
                         ))}
                     </div>
