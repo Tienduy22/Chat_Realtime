@@ -18,14 +18,10 @@ export default defineConfig({
         },
     },
     server: {
-        port: 3000,
         proxy: {
-            "/api": {
-                target: "http://localhost:5000",
-                changeOrigin: true,
-            },
+            "/api": "http://localhost:8080",
             "/socket.io": {
-                target: "ws://localhost:3001",
+                target: "ws://localhost:8080",
                 ws: true,
             },
         },

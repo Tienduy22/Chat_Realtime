@@ -40,12 +40,8 @@ export const routeConfig = {
 
     protected: [
         {
-            path: "/",
-            element: WelcomeScreen,
-        },
-        {
             path: "/chat",
-            element: ConversationList,
+            element: ConversationDetail,
             meta: { title: "Chat", icon: "MessageSquare", showInSidebar: true },
         },
         {

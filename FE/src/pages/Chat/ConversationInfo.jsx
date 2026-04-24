@@ -107,7 +107,7 @@ export default function ConversationInfo({
         try {
             await deleteHistoryOfConversation(conversation_id);
 
-            navigate("/");
+            navigate("/chat");
         } catch (error) {
             console.error("Lỗi khi xóa lịch sử:", error);
             alert("Xóa lịch sử thất bại");
@@ -126,7 +126,7 @@ export default function ConversationInfo({
 
             alert("Nhóm đã được xóa");
 
-            navigate("/");
+            navigate("/chat");
         } catch (error) {
             console.error("Lỗi khi xóa nhóm:", error);
             alert("Xóa nhóm thất bại");
@@ -148,7 +148,7 @@ export default function ConversationInfo({
 
             alert("Bạn đã rời nhóm");
 
-            navigate("/");
+            navigate("/chat");
         } catch (error) {
             console.error("Lỗi khi rời nhóm:", error);
             alert("Rời nhóm thất bại");

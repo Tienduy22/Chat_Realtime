@@ -12,11 +12,11 @@ router.get('/', notificationController.getNotifications)
 // Get unread count
 router.get('/unread/count', notificationController.getUnreadCount)
 
-// Mark notification as read
-router.post('/:notification_id/read', notificationController.markAsRead)
-
 // Mark all notifications as read
 router.post('/read-all', notificationController.markAllAsRead)
+
+// Mark notification as read
+router.post('/:notification_id/read', notificationController.markAsRead)
 
 // Delete notification
 router.delete('/:notification_id', notificationController.deleteNotification)

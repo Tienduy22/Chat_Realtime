@@ -1,9 +1,11 @@
 import axios from "axios";
 
+const API_URL = import.meta.env.VITE_API_URL
+
 export const listFriends = async (user_id) => {
     try {
         const response = await axios.get(
-            "http://localhost:5000/api/contact/friends",
+            `${API_URL}/api/contact/friends`,
             {
                 params: { user_id },
                 withCredentials: true,
@@ -19,7 +21,7 @@ export const listFriends = async (user_id) => {
 export const listGroup = async (user_id) => {
     try {
         const response = await axios.get(
-            "http://localhost:5000/api/contact/groups",
+            `${API_URL}/api/contact/groups`,
             {
                 params: { user_id },
                 withCredentials: true,
@@ -35,7 +37,7 @@ export const listGroup = async (user_id) => {
 export const findContactByPhone = async (phone) => {
     try {
         const response = await axios.get(
-            "http://localhost:5000/api/contact/find_contact",
+            `${API_URL}/api/contact/find_contact`,
             {
                 params: { phone },
                 withCredentials: true,
@@ -51,7 +53,7 @@ export const findContactByPhone = async (phone) => {
 export const findSendInvitations = async (user_id) => {
     try {
         const response = await axios.get(
-            "http://localhost:5000/api/contact/send_invitations",
+            `${API_URL}/api/contact/send_invitations`,
             {
                 params: { user_id },
                 withCredentials: true,
@@ -67,7 +69,7 @@ export const findSendInvitations = async (user_id) => {
 export const findInvitations = async (user_id) => {
     try {
         const response = await axios.get(
-            "http://localhost:5000/api/contact/invitations",
+            `${API_URL}/api/contact/invitations`,
             {
                 params: { user_id },
                 withCredentials: true,
@@ -83,7 +85,7 @@ export const findInvitations = async (user_id) => {
 export const sendInvitations = async (data) => {
     try {
         const response = await axios.post(
-            "http://localhost:5000/api/contact/send",
+            `${API_URL}/api/contact/send`,
             data,
             {
                 withCredentials: true,
@@ -99,7 +101,7 @@ export const sendInvitations = async (data) => {
 export const removeInvitations = async (contact_id) => {
     try {
         const response = await axios.delete(
-            "http://localhost:5000/api/contact/invitations",
+            `${API_URL}/api/contact/invitations`,
             {
                 params: { contact_id },
                 withCredentials: true,
@@ -115,7 +117,7 @@ export const removeInvitations = async (contact_id) => {
 export const acceptInvitations = async (user_id, contact_user_id) => {
     try {
         const response = await axios.post(
-            "http://localhost:5000/api/contact/accept",
+            `${API_URL}/api/contact/accept`,
             {
                 user_id,
                 contact_user_id,
@@ -131,7 +133,7 @@ export const acceptInvitations = async (user_id, contact_user_id) => {
 export const rejectInvitations = async (contact_id) => {
     try {
         const response = await axios.post(
-            "http://localhost:5000/api/contact/reject",
+            `${API_URL}/api/contact/reject`,
             {
                 contact_id,
             },
@@ -157,7 +159,7 @@ export const newGroup = async (data) => {
         }
 
         const response = await axios.post(
-            "http://localhost:5000/api/conversation/new_group",
+            `${API_URL}/api/conversation/new_group`,
             formData,
         );
 
@@ -175,7 +177,7 @@ export const newGroup = async (data) => {
 export const blockFriend = async (user_id, friend_id) => {
     try {
         const response = await axios.post(
-            "http://localhost:5000/api/contact/block",
+            `${API_URL}/api/contact/block`,
             {
                 user_id,
                 friend_id,
@@ -191,7 +193,7 @@ export const blockFriend = async (user_id, friend_id) => {
 export const unBlockFriend = async (user_id, friend_id) => {
     try {
         const response = await axios.post(
-            "http://localhost:5000/api/contact/unblock",
+            `${API_URL}/api/contact/unblock`,
             {
                 user_id,
                 friend_id,
@@ -207,7 +209,7 @@ export const unBlockFriend = async (user_id, friend_id) => {
 export const removeFriend = async (user_id, friend_id) => {
     try {
         const response = await axios.post(
-            "http://localhost:5000/api/contact/remove-friend",
+            `${API_URL}/api/contact/remove-friend`,
             {
                 user_id,
                 friend_id,

@@ -1,4 +1,4 @@
-const { Model } = require("sequelize");
+const { Model, where } = require("sequelize");
 const { User, UserSetting } = require("../models");
 const { Op } = require("sequelize");
 
@@ -19,7 +19,7 @@ const findByEmail = async (email) => {
         const user = await User.findOne({
             where: {
                 email: email,
-                is_active: true
+                is_active: true,
             },
         });
 
@@ -28,6 +28,22 @@ const findByEmail = async (email) => {
         throw error;
     }
 };
+
+const findByPhone = async (phone) => {
+    try {
+        const user = await User.findOne({
+            where: {
+                phone: phone,
+                is_active: true,
+            },
+        });
+
+        return user;
+    } catch (error) {
+        throw error;
+    }
+};
+
 
 const findById = async (user_id) => {
     try {
@@ -42,16 +58,16 @@ const findAll = async (user_ids) => {
     try {
         const users = await User.findAll({
             where: {
-                user_id: {[Op.in]: user_ids},
-                is_active: true
-            }
-        })
+                user_id: { [Op.in]: user_ids },
+                is_active: true,
+            },
+        });
 
-        return users
+        return users;
     } catch (error) {
-        throw error
+        throw error;
     }
-}
+};
 
 const findByName = async (username) => {
     try {
@@ -113,6 +129,21 @@ const update = async (user_id, updateData) => {
     }
 };
 
+const newPassword = async (email, password) => {
+    try {
+        return await User.update(
+            { password_hash: password },
+            {
+                where: {
+                    email: email,
+                },
+            },
+        );
+    } catch (error) {
+        throw error;
+    }
+};
+
 const updateLastSeen = async (user_id) => {
     try {
         return await update(user_id, {
@@ -136,6 +167,7 @@ const updateStatus = async (user_id, status) => {
 module.exports = {
     create,
     findByEmail,
+    findByPhone,
     findByName,
     findAll,
     findById,
@@ -144,4 +176,5 @@ module.exports = {
     update,
     updateLastSeen,
     updateStatus,
+    newPassword
 };

@@ -16,7 +16,7 @@ const searchUser = async (req, res, next) => {
 
 const updateProfile = async (req, res, next) => {
     try {
-        const result = await userService.updateProfile(req.params.user_id ,req.body, req.uploadedImageUrls);
+        const result = await userService.updateProfile(req.params.user_id ,req.body);
 
         return res.status(201).json({
             success: true,
@@ -28,7 +28,52 @@ const updateProfile = async (req, res, next) => {
     }
 };
 
+const updateAvatar = async (req, res, next) => {
+    try {
+        const result = await userService.updateAvatar(req.params.user_id, req.uploadedImageUrls);
+
+        return res.status(201).json({
+            success: true,
+            message: "Cập nhật avatar thành công",
+            data: result, 
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const findById = async (req, res, next) => {
+    try {
+        const result = await userService.findById(req.query.user_id);
+
+        return res.status(201).json({
+            success: true,
+            message: "Tìm kiếm thành công",
+            data: result, 
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const changePassword = async (req, res, next) => {
+    try {
+        const result = await userService.changePassword(req.body);
+
+        return res.status(201).json({
+            success: true,
+            message: "Cập nhật avatar thành công",
+            data: result, 
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     updateProfile,
-    searchUser
+    searchUser,
+    updateAvatar,
+    findById,
+    changePassword
 }

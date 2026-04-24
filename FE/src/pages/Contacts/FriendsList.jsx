@@ -31,7 +31,7 @@ export default function FriendsList() {
     const [successMsg, setSuccessMsg] = useState("");
 
     const user = useSelector((state) => state.user);
-    const socket = useSocket();
+    const {socket} = useSocket();
 
     // Fetch friends
     useEffect(() => {

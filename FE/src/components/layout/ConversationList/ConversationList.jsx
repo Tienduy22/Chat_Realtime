@@ -1,21 +1,22 @@
-// components/ConversationList.jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useSelector } from "react-redux";
 import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
 import { listConversation } from "../../../services/conversation.service";
-import { useSocket } from "../../../context/SocketContext"; // ← Thêm import này
+import { markAsRead } from "../../../services/message.service"; // ← import API mark as read
+import { useSocket } from "../../../context/SocketContext";
 
 const ConversationList = () => {
     const [conversations, setConversations] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [searchMode, setSearchMode] = useState(false);
+    const [searchText, setSearchText] = useState("");
+    const [activeFilter, setActiveFilter] = useState("all"); // 'all' | 'unread' | 'group'
 
-    // Trạng thái online/offline
-    const [onlineUsers, setOnlineUsers] = useState(new Set());
-    const [lastSeen, setLastSeen] = useState(new Map());
-
-    const socket = useSocket();
+    const { socket, onlineUsers } = useSocket();
+    const currentUserId = useSelector((state) => state.user?.user_id);
 
     const navigate = useNavigate();
     const location = useLocation();
@@ -24,19 +25,13 @@ const ConversationList = () => {
         ? location.pathname.split("/chat/")[1]
         : null;
 
-    // Fetch danh sách cuộc trò chuyện
+    // Fetch danh sách ban đầu
     useEffect(() => {
         const fetchConversations = async () => {
             try {
                 const response = await listConversation();
                 if (response.success) {
-                    const filtered = response.data.filter(
-                        (item) =>
-                            item.conversation?.messages &&
-                            item.conversation.messages.length > 0,
-                    );
-
-                    setConversations(filtered);
+                    setConversations(response.data);
                 } else {
                     setError("Không thể tải danh sách cuộc trò chuyện");
                 }
@@ -51,49 +46,84 @@ const ConversationList = () => {
         fetchConversations();
     }, []);
 
-    // Socket: online/offline/activity + initial sync
+    // Realtime: lắng nghe new_message
     useEffect(() => {
         if (!socket) return;
 
-        const handleUserOnline = (data) => {
-            setOnlineUsers((prev) => new Set(prev).add(data.user_id));
-            setLastSeen((prev) => new Map(prev).set(data.user_id, Date.now()));
+        const handleNewMessage = (data) => {
+            if (!data.conversation_id || !data.messages?.length) return;
+
+            const convId = Number(data.conversation_id);
+
+            setConversations((prev) =>
+                prev.map((item) => {
+                    if (Number(item.conversation.conversation_id) !== convId) {
+                        return item;
+                    }
+
+                    const newMessages = data.messages;
+                    const lastNewMsg = newMessages[0];
+
+                    const updatedMessages = [
+                        {
+                            ...lastNewMsg,
+                            sender: data.sender || { user_id: lastNewMsg.sender_id },
+                            created_at: lastNewMsg.created_at || new Date().toISOString(),
+                        },
+                        ...item.conversation.messages.filter(
+                            (m) => m.message_id !== lastNewMsg.message_id
+                        ),
+                    ];
+
+                    let newUnread = item.unread_count || 0;
+                    const isOwnMessage = lastNewMsg.sender_id === currentUserId;
+
+                    if (
+                        convId !== Number(currentConversationId) &&
+                        !isOwnMessage
+                    ) {
+                        newUnread += 1; // hoặc + newMessages.length nếu batch
+                    }
+
+                    return {
+                        ...item,
+                        conversation: {
+                            ...item.conversation,
+                            messages: updatedMessages,
+                        },
+                        unread_count: newUnread,
+                    };
+                })
+            );
         };
 
-        const handleUserActivity = (data) => {
-            setLastSeen((prev) => new Map(prev).set(data.user_id, Date.now()));
-            setOnlineUsers((prev) => new Set(prev).add(data.user_id));
+        const handleSeemMessage = (data) => {
+            const convId = Number(data.conversation_id);
+            if (convId !== Number(currentConversationId)) return;
+
+            // Nếu chính mình mark read → reset unread local
+            if (Number(data.user_id) === currentUserId) {
+                setConversations((prev) =>
+                    prev.map((item) =>
+                        Number(item.conversation.conversation_id) === convId
+                            ? { ...item, unread_count: 0 }
+                            : item
+                    )
+                );
+            }
         };
 
-        const handleUserOffline = (data) => {
-            setOnlineUsers((prev) => {
-                const newSet = new Set(prev);
-                newSet.delete(data.user_id);
-                return newSet;
-            });
-        };
-
-        const handleInitialOnline = (users) => {
-            setOnlineUsers(new Set(users.map((u) => u.user_id)));
-            setLastSeen(new Map(users.map((u) => [u.user_id, u.last_seen])));
-        };
-
-        socket.on("user_online", handleUserOnline);
-        socket.on("user_activity", handleUserActivity);
-        socket.on("user_offline", handleUserOffline);
-        socket.on("initial_online_users", handleInitialOnline);
+        socket.on("new_message", handleNewMessage);
+        socket.on("seem_message", handleSeemMessage);
 
         return () => {
-            socket.off("user_online", handleUserOnline);
-            socket.off("user_activity", handleUserActivity);
-            socket.off("user_offline", handleUserOffline);
-            socket.off("initial_online_users", handleInitialOnline);
+            socket.off("new_message", handleNewMessage);
+            socket.off("seem_message", handleSeemMessage);
         };
-    }, [socket]);
+    }, [socket, currentConversationId, currentUserId]);
 
-    // Format thời gian
     const formatTime = (dateString) => {
-        if (!dateString) return "Chưa có tin nhắn";
+        if (!dateString) return "";
         try {
             return formatDistanceToNow(new Date(dateString), {
                 addSuffix: true,
@@ -104,7 +134,6 @@ const ConversationList = () => {
         }
     };
 
-    // Preview tin nhắn cuối
     const getLastMessagePreview = (messages, participants) => {
         if (!messages || messages.length === 0) return "Chưa có tin nhắn";
 
@@ -112,11 +141,11 @@ const ConversationList = () => {
         const sender = lastMsg.sender;
 
         let senderName = "Ai đó";
-        if (sender && sender.full_name) {
+        if (sender?.full_name) {
             senderName = sender.full_name;
         } else if (participants) {
             const found = participants.find(
-                (p) => p.user.user_id === lastMsg.sender_id,
+                (p) => p.user.user_id === lastMsg.sender_id
             );
             if (found) senderName = found.user.full_name;
         }
@@ -135,7 +164,6 @@ const ConversationList = () => {
         }
     };
 
-    // Lấy tên và avatar hiển thị
     const getConversationDisplay = (conv) => {
         if (conv.conversation_type === "group") {
             return {
@@ -157,7 +185,7 @@ const ConversationList = () => {
 
         const otherUser =
             conv.participants.find(
-                (p) => p.user.user_id !== conv.current_user_id,
+                (p) => p.user.user_id !== conv.current_user_id
             )?.user || conv.participants[0].user;
 
         return {
@@ -168,30 +196,47 @@ const ConversationList = () => {
         };
     };
 
-    // Lấy trạng thái online (chỉ cho chat cá nhân)
-    const getUserStatusText = (userId) => {
-        if (!userId) return null;
+    const handleConversationClick = async (conversationId) => {
+        navigate(`/chat/${conversationId}`);
+        setSearchMode(false);
+        setSearchText("");
 
-        // Ưu tiên cao nhất: nếu đang online → luôn "Đang hoạt động"
-        if (onlineUsers.has(userId)) {
-            return "Đang hoạt động";
+        // Reset local ngay lập tức (optimistic UI)
+        setConversations((prev) =>
+            prev.map((item) =>
+                Number(item.conversation.conversation_id) === Number(conversationId)
+                    ? { ...item, unread_count: 0 }
+                    : item
+            )
+        );
+
+        try {
+            // Tìm conversation để lấy last message id
+            const selectedConv = conversations.find(
+                (item) => Number(item.conversation.conversation_id) === Number(conversationId)
+            );
+
+            if (selectedConv?.conversation?.messages?.length > 0) {
+                const lastMessageId = selectedConv.conversation.messages[0].message_id;
+
+                // Gọi API mark as read
+                await markAsRead(
+                    conversationId,
+                    [lastMessageId], // backend dùng message_ids[0]
+                    currentUserId
+                );
+
+                console.log(`Đã mark as read conversation ${conversationId}`);
+            }
+        } catch (err) {
+            console.error("Mark as read thất bại:", err);
+            // Không rollback vì UI đã reset, backend sẽ xử lý khi fetch lại
         }
-
-        // Chỉ khi offline mới tính thời gian từ lastSeen
-        const lastActive = lastSeen.get(userId);
-        if (!lastActive) return null;
-
-        const diffMin = Math.floor((Date.now() - lastActive) / 60000);
-        if (diffMin < 1) return "Vừa mới hoạt động";
-        if (diffMin < 60) return `Hoạt động ${diffMin} phút trước`;
-        if (diffMin < 1440)
-            return `Hoạt động ${Math.floor(diffMin / 60)} giờ trước`;
-        return `Hoạt động ${Math.floor(diffMin / 1440)} ngày trước`;
     };
 
-    // Xử lý click vào cuộc trò chuyện
-    const handleConversationClick = (conversationId) => {
-        navigate(`/chat/${conversationId}`);
+    const handleCloseSearch = () => {
+        setSearchMode(false);
+        setSearchText("");
     };
 
     if (loading) {
@@ -210,6 +255,35 @@ const ConversationList = () => {
         );
     }
 
+    // Lọc theo search và filter
+    let filteredConversations = conversations;
+
+    if (searchText.trim()) {
+        filteredConversations = conversations.filter((item) => {
+            const conv = item.conversation;
+            const display = getConversationDisplay(conv);
+            return display.name.toLowerCase().includes(searchText.toLowerCase());
+        });
+    }
+
+    if (!searchMode) {
+        if (activeFilter === "unread") {
+            filteredConversations = filteredConversations.filter(
+                (item) => item.unread_count > 0
+            );
+        } else if (activeFilter === "group") {
+            filteredConversations = filteredConversations.filter(
+                (item) => item.conversation.conversation_type === "group"
+            );
+        }
+    }
+
+    const displayList = filteredConversations.filter(
+        (item) =>
+            item.conversation?.messages &&
+            item.conversation.messages.length > 0
+    );
+
     return (
         <aside className="w-80 bg-gray-50 dark:bg-sidebar-panel-dark border-r border-gray-200 dark:border-gray-800 flex flex-col hidden lg:flex flex-shrink-0">
             <div className="p-6 pb-2">
@@ -219,142 +293,196 @@ const ConversationList = () => {
                     </h2>
                 </div>
 
-                <div className="relative mb-6">
-                    <span className="material-icons absolute left-3 top-2.5 text-gray-400 text-lg">
-                        search
-                    </span>
-                    <input
-                        className="w-full bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary dark:text-gray-200 placeholder-gray-400 transition-all"
-                        placeholder="Tìm kiếm cuộc trò chuyện..."
-                        type="text"
-                    />
+                <div className="relative mb-6 flex items-center gap-2">
+                    <div className="relative flex-1">
+                        <span className="material-icons absolute left-3 top-2.5 text-gray-400 text-lg">
+                            search
+                        </span>
+                        <input
+                            className="w-full bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary dark:text-gray-200 placeholder-gray-400 transition-all"
+                            placeholder="Tìm kiếm cuộc trò chuyện..."
+                            type="text"
+                            value={searchText}
+                            onFocus={() => setSearchMode(true)}
+                            onChange={(e) => setSearchText(e.target.value)}
+                        />
+                    </div>
+
+                    {searchMode && (
+                        <button
+                            onClick={handleCloseSearch}
+                            className="text-sm text-blue-600 font-medium shrink-0"
+                        >
+                            Đóng
+                        </button>
+                    )}
                 </div>
 
-                <div className="flex gap-2 mb-4">
-                    <button className="px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white text-xs font-medium rounded-lg">
-                        Tất cả
-                    </button>
-                    <button className="px-3 py-1 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-white text-xs font-medium rounded-lg transition-colors">
-                        Chưa đọc
-                    </button>
-                    <button className="px-3 py-1 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-white text-xs font-medium rounded-lg transition-colors">
-                        Nhóm
-                    </button>
-                </div>
+                {!searchMode && (
+                    <div className="flex gap-2 mb-4">
+                        <button
+                            onClick={() => setActiveFilter("all")}
+                            className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${
+                                activeFilter === "all"
+                                    ? "bg-primary text-white"
+                                    : "bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-600"
+                            }`}
+                        >
+                            Tất cả
+                        </button>
+                        <button
+                            onClick={() => setActiveFilter("unread")}
+                            className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${
+                                activeFilter === "unread"
+                                    ? "bg-primary text-white"
+                                    : "text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-white"
+                            }`}
+                        >
+                            Chưa đọc
+                        </button>
+                        <button
+                            onClick={() => setActiveFilter("group")}
+                            className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${
+                                activeFilter === "group"
+                                    ? "bg-primary text-white"
+                                    : "text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-white"
+                            }`}
+                        >
+                            Nhóm
+                        </button>
+                    </div>
+                )}
+
+                {searchMode && !searchText.trim() && (
+                    <p className="text-xs text-gray-400 mb-3">
+                        Tất cả cuộc trò chuyện
+                    </p>
+                )}
+
+                {searchMode && searchText.trim() && (
+                    <p className="text-xs text-gray-400 mb-3">
+                        {filteredConversations.length} kết quả cho &quot;{searchText}&quot;
+                    </p>
+                )}
             </div>
 
             <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-2">
-                {conversations.map((item) => {
-                    const conv = item.conversation;
-                    const display = getConversationDisplay(conv);
-                    const preview = getLastMessagePreview(
-                        conv.messages,
-                        conv.participants,
-                    );
-                    const time =
-                        conv.messages && conv.messages.length > 0
-                            ? formatTime(conv.messages[0].created_at)
-                            : "Chưa có tin nhắn";
+                {displayList.length === 0 ? (
+                    <div className="text-center text-gray-400 text-sm py-8">
+                        {searchMode
+                            ? "Không tìm thấy cuộc trò chuyện nào"
+                            : activeFilter === "unread"
+                              ? "Không có tin nhắn chưa đọc"
+                              : activeFilter === "group"
+                                ? "Bạn chưa tham gia nhóm nào"
+                                : "Chưa có cuộc trò chuyện nào"}
+                    </div>
+                ) : (
+                    displayList.map((item) => {
+                        const conv = item.conversation;
+                        const display = getConversationDisplay(conv);
+                        const preview = getLastMessagePreview(
+                            conv.messages,
+                            conv.participants
+                        );
+                        const time =
+                            conv.messages?.length > 0
+                                ? formatTime(conv.messages[0].created_at)
+                                : "";
 
-                    const hasUnread = item.unread_count > 0;
-                    const isActive =
-                        conv.conversation_id.toString() ===
-                        currentConversationId;
-                    const statusText = !display.isGroup
-                        ? getUserStatusText(display.otherUserId)
-                        : null;
-                    const isOnline =
-                        !display.isGroup &&
-                        onlineUsers.has(display.otherUserId);
+                        const hasUnread = item.unread_count > 0;
+                        const isActive =
+                            conv.conversation_id.toString() === currentConversationId;
+                        const isOnline =
+                            !display.isGroup &&
+                            onlineUsers.has(display.otherUserId);
 
-                    return (
-                        <div
-                            key={item.participant_id}
-                            onClick={() =>
-                                handleConversationClick(conv.conversation_id)
-                            }
-                            className={`group p-3 rounded-xl cursor-pointer transition-all
-                ${
-                    isActive
-                        ? "bg-primary/10 border border-primary/30 shadow-sm"
-                        : hasUnread
-                          ? "bg-white dark:bg-gray-800/60 shadow-sm border border-gray-100 dark:border-gray-700/50"
-                          : "hover:bg-white dark:hover:bg-gray-800/40 border border-transparent hover:border-gray-100 dark:hover:border-gray-700/30"
-                }`}
-                        >
-                            <div className="flex gap-3">
-                                <div className="relative">
-                                    {display.avatar ? (
-                                        <img
-                                            alt={display.name}
-                                            className="w-10 h-10 rounded-full object-cover"
-                                            src={display.avatar}
-                                        />
-                                    ) : display.isGroup ? (
-                                        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-300 dark:bg-gray-700">
-                                            <span className="material-icons text-base text-gray-600 dark:text-gray-300">
-                                                groups
-                                            </span>
-                                        </div>
-                                    ) : (
-                                        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-indigo-600 text-white font-bold text-sm">
-                                            {display.name
-                                                .charAt(0)
-                                                .toUpperCase()}
-                                        </div>
-                                    )}
+                        return (
+                            <div
+                                key={item.participant_id}
+                                onClick={() =>
+                                    handleConversationClick(conv.conversation_id)
+                                }
+                                className={`group p-3 rounded-xl cursor-pointer transition-all relative
+                                    ${
+                                        isActive
+                                            ? "bg-primary/10 border border-primary/30 shadow-sm"
+                                            : hasUnread
+                                              ? "bg-white dark:bg-gray-800/60 shadow-sm border border-gray-100 dark:border-gray-700/50"
+                                              : "hover:bg-white dark:hover:bg-gray-800/40 border border-transparent hover:border-gray-100 dark:hover:border-gray-700/30"
+                                    }`}
+                            >
+                                <div className="flex gap-3">
+                                    <div className="relative flex-shrink-0">
+                                        {display.avatar ? (
+                                            <img
+                                                alt={display.name}
+                                                className="w-10 h-10 rounded-full object-cover"
+                                                src={display.avatar}
+                                            />
+                                        ) : display.isGroup ? (
+                                            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-300 dark:bg-gray-700">
+                                                <span className="material-icons text-base text-gray-600 dark:text-gray-300">
+                                                    groups
+                                                </span>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-indigo-600 text-white font-bold text-sm">
+                                                {display.name.charAt(0).toUpperCase()}
+                                            </div>
+                                        )}
 
-                                    {/* Chấm online chỉ hiện cho chat cá nhân */}
-                                    {!display.isGroup && (
-                                        <span
-                                            className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white dark:border-gray-900 ${
-                                                isOnline
-                                                    ? "bg-green-500"
-                                                    : "bg-gray-400"
-                                            }`}
-                                        />
-                                    )}
-                                </div>
-
-                                <div className="flex-1 min-w-0">
-                                    {/* Dòng trên: Tên + Thời gian tin nhắn cuối */}
-                                    <div className="flex justify-between items-baseline mb-0.5">
-                                        <h3
-                                            className={`text-sm font-${hasUnread || isActive ? "semibold" : "medium"} 
-                ${isActive ? "text-primary" : "text-gray-800 dark:text-gray-200"} truncate`}
-                                        >
-                                            {display.name}
-                                        </h3>
-                                        <span className="text-xs text-gray-400 shrink-0">
-                                            {time}
-                                        </span>
+                                        {!display.isGroup && (
+                                            <span
+                                                className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-gray-900 shadow-sm
+                                                    ${isOnline ? "bg-green-500" : "bg-gray-400"}`}
+                                            />
+                                        )}
                                     </div>
 
-                                    {/* Dòng dưới: Preview tin nhắn cắt ngắn + thời gian ở cuối nếu cần, nhưng theo ảnh thì chỉ preview + ... */}
-                                    <div className="flex items-center justify-between">
-                                        <p
-                                            className={`text-xs truncate ${
-                                                hasUnread || isActive
-                                                    ? "text-gray-900 dark:text-white font-medium"
-                                                    : "text-gray-500 dark:text-gray-500"
-                                            }`}
-                                        >
-                                            {preview.length > 50
-                                                ? `${preview.substring(0, 47)}...`
-                                                : preview}
-                                        </p>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex justify-between items-center mb-0.5">
+                                            <h3
+                                                className={`text-sm font-${
+                                                    hasUnread || isActive ? "semibold" : "medium"
+                                                } 
+                                                    ${isActive ? "text-primary" : "text-gray-800 dark:text-gray-200"} truncate`}
+                                            >
+                                                {display.name}
+                                            </h3>
 
-                                        {hasUnread && (
-                                            <span className="bg-primary text-white text-[10px] h-4 min-w-[16px] px-1 rounded-full flex items-center justify-center shrink-0">
-                                                {item.unread_count}
-                                            </span>
-                                        )}
+                                            {hasUnread && (
+                                                <span className="bg-primary text-white text-[10px] h-5 min-w-[20px] px-1.5 rounded-full flex items-center justify-center shrink-0">
+                                                    {item.unread_count}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <div className="flex items-start justify-between gap-2">
+                                            <p
+                                                className={`text-xs truncate flex-1 ${
+                                                    hasUnread || isActive
+                                                        ? "text-gray-900 dark:text-white font-medium"
+                                                        : "text-gray-500 dark:text-gray-500"
+                                                }`}
+                                            >
+                                                {preview.length > 55
+                                                    ? `${preview.substring(0, 52)}…`
+                                                    : preview}
+                                            </p>
+
+                                            {time && (
+                                                <span className="text-xs text-gray-400 shrink-0 whitespace-nowrap pl-1">
+                                                    {time}
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    );
-                })}
+                        );
+                    })
+                )}
             </div>
         </aside>
     );

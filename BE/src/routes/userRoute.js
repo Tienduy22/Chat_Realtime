@@ -6,6 +6,12 @@ const router = express.Router();
 
 router.get('/', userController.searchUser)
 
-router.patch("/profile/:user_id", upload.array('images', 10), uploadCloudinary, userController.updateProfile);
+router.get('/profile', userController.findById)
+
+router.post("/password", userController.changePassword);
+
+router.post("/profile/:user_id", userController.updateProfile);
+
+router.post("/avatar/:user_id", upload.array('images', 10), uploadCloudinary, userController.updateAvatar);
 
 module.exports = router;

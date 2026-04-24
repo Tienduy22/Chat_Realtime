@@ -2,8 +2,13 @@ const contactReponsitory = require("../repositories/contact.reponsitory");
 const notificationReponsitory = require("../repositories/notification.reponsitory");
 const userReponsitory = require("../repositories/user.reponsitory");
 const blockedUserReponsitory = require("../repositories/blockedUser.reponsitory");
-const conversationReponsitory = require("../repositories/conversation.reponsitory")
-const { emitFriendRequest, emitFriendAccepted, emitFriendRejected, emitFriendRemoved } = require("../socket/notificationHandlers")
+const conversationReponsitory = require("../repositories/conversation.reponsitory");
+const {
+    emitFriendRequest,
+    emitFriendAccepted,
+    emitFriendRejected,
+    emitFriendRemoved,
+} = require("../socket/notificationHandlers");
 const sendInvitations = async ({ user_id, contact_user_id }) => {
     try {
         if (user_id === contact_user_id) {
@@ -18,10 +23,11 @@ const sendInvitations = async ({ user_id, contact_user_id }) => {
             throw { statusCode: 404, message: "User không tồn tại" };
         }
 
-        const existingContact = await contactReponsitory.findByUserIdAndContactUserId(
-            user_id,
-            contact_user_id,
-        );
+        const existingContact =
+            await contactReponsitory.findByUserIdAndContactUserId(
+                user_id,
+                contact_user_id,
+            );
 
         if (existingContact) {
             if (existingContact.status === "pending") {
@@ -37,7 +43,7 @@ const sendInvitations = async ({ user_id, contact_user_id }) => {
 
         const contact = await contactReponsitory.sendInvitations(
             user_id,
-            contact_user_id
+            contact_user_id,
         );
 
         const user = await userReponsitory.findById(user_id);
@@ -72,8 +78,6 @@ const acceptInvitations = async ({ user_id, contact_user_id }) => {
                 message: "Không tìm thấy tài khoản người gửi",
             };
         }
-        console.log("contactUser:", contact_user_id);
-        console.log("user_id:", user_id);
         const contactSend =
             await contactReponsitory.findByUserIdAndContactUserId(
                 contact_user_id,
@@ -88,12 +92,12 @@ const acceptInvitations = async ({ user_id, contact_user_id }) => {
 
         await contactReponsitory.updateStatus(
             contactSend.contact_id,
-            "accepted"
+            "accepted",
         );
 
         const contactRespond = await contactReponsitory.acceptInvitations(
             user_id,
-            contactUser.user_id
+            contactUser.user_id,
         );
 
         await notificationReponsitory.notificationAcceptInvite(
@@ -105,7 +109,16 @@ const acceptInvitations = async ({ user_id, contact_user_id }) => {
         const io = global.io;
         await emitFriendAccepted(io, user_id, contactUser.user_id);
 
-        await conversationReponsitory.createNewConversation(user_id, contact_user_id)
+        const conversation = await conversationReponsitory.findPrivateConversation(
+            user_id,
+            contact_user_id,
+        );
+        if (!conversation) {
+            await conversationReponsitory.createNewConversation(
+                user_id,
+                contact_user_id,
+            );
+        }
 
         return contactRespond;
     } catch (error) {
@@ -115,9 +128,7 @@ const acceptInvitations = async ({ user_id, contact_user_id }) => {
 
 const rejectInvitations = async ({ contact_id }) => {
     try {
-        const contact = await contactReponsitory.findById(
-            contact_id
-        );
+        const contact = await contactReponsitory.findById(contact_id);
         if (!contact) {
             throw { statusCode: 404, message: "Lời mời không tồn tại" };
         }
@@ -126,7 +137,11 @@ const rejectInvitations = async ({ contact_id }) => {
         const io = global.io;
         if (io) {
             // Gửi notification cho người gửi lời mời về việc bị từ chối
-            await emitFriendRejected(io, contact.contact_user_id, contact.user_id);
+            await emitFriendRejected(
+                io,
+                contact.contact_user_id,
+                contact.user_id,
+            );
         }
 
         return {
@@ -161,7 +176,7 @@ const blockFriend = async ({ user_id, friend_id }) => {
     try {
         const contact1 = await contactReponsitory.findByUserIdAndContactUserId(
             user_id,
-            friend_id
+            friend_id,
         );
         if (!contact1) {
             throw {
@@ -173,7 +188,7 @@ const blockFriend = async ({ user_id, friend_id }) => {
         await contactReponsitory.updateStatus(contact1.contact_id, "blocked");
         const blocked = await blockedUserReponsitory.blockFriend(
             user_id,
-            friend_id
+            friend_id,
         );
 
         // ✅ Emit socket event for real-time update
@@ -199,14 +214,14 @@ const unBlockFriend = async ({ user_id, friend_id }) => {
     try {
         const contact1 = await contactReponsitory.findByUserIdAndContactUserId(
             user_id,
-            friend_id
+            friend_id,
         );
 
-        await contactReponsitory.updateStatus(contact1.contact_id, "accepted");;
+        await contactReponsitory.updateStatus(contact1.contact_id, "accepted");
 
         const block = await blockedUserReponsitory.findBlock(
             user_id,
-            friend_id
+            friend_id,
         );
         await blockedUserReponsitory.unBlockFriend(block.block_id);
 
@@ -234,13 +249,13 @@ const unBlockFriend = async ({ user_id, friend_id }) => {
 const listBlocked = async ({ user_id }) => {
     try {
         const listBlocked = await blockedUserReponsitory.listBlocked(user_id);
-        return listBlocked
+        return listBlocked;
     } catch (error) {
         throw error;
     }
 };
 
-const findContactByPhone = async ({phone}) => { 
+const findContactByPhone = async ({ phone }) => {
     try {
         const contact = await contactReponsitory.findByPhone(phone);
         return contact;
@@ -249,7 +264,7 @@ const findContactByPhone = async ({phone}) => {
     }
 };
 
-const findSendInvitations = async ({user_id}) => { 
+const findSendInvitations = async ({ user_id }) => {
     try {
         const result = await contactReponsitory.findSendInvitations(user_id);
         return result;
@@ -258,7 +273,7 @@ const findSendInvitations = async ({user_id}) => {
     }
 };
 
-const findInvitations = async ({user_id}) => { 
+const findInvitations = async ({ user_id }) => {
     try {
         const result = await contactReponsitory.findInvitations(user_id);
         return result;
@@ -267,7 +282,7 @@ const findInvitations = async ({user_id}) => {
     }
 };
 
-const removeInvitations = async ({contact_id}) => { 
+const removeInvitations = async ({ contact_id }) => {
     try {
         return await contactReponsitory.removeInvitations(contact_id);
     } catch (error) {
@@ -279,7 +294,7 @@ const removeFriend = async ({ user_id, friend_id }) => {
     try {
         const contact = await contactReponsitory.findByUserIdAndContactUserId(
             user_id,
-            friend_id
+            friend_id,
         );
         if (!contact) {
             throw {
@@ -304,7 +319,6 @@ const removeFriend = async ({ user_id, friend_id }) => {
     }
 };
 
-
 module.exports = {
     sendInvitations,
     acceptInvitations,
@@ -318,5 +332,5 @@ module.exports = {
     findSendInvitations,
     findInvitations,
     removeInvitations,
-    removeFriend
+    removeFriend,
 };

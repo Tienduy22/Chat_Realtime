@@ -1,10 +1,12 @@
 import axios from "axios";
 
+const API_URL = import.meta.env.VITE_API_URL
+
 export const listConversation = async () => {
     try {
 
         const response = await axios.get(
-            "http://localhost:5000/api/conversation/list_conversation",
+            `${API_URL}/api/conversation/list_conversation`,
             {
                 withCredentials: true
             }
@@ -21,7 +23,7 @@ export const conversationFindById = async (conversation_id) => {
     try {
 
         const response = await axios.get(
-            `http://localhost:5000/api/conversation/detail/${conversation_id}`,
+            `${API_URL}/api/conversation/detail/${conversation_id}`,
             {
                 withCredentials: true
             }
@@ -38,7 +40,7 @@ export const dataOfConversation = async (conversation_id) => {
     try {
 
         const response = await axios.get(
-            "http://localhost:5000/api/conversation/data",
+            `${API_URL}/api/conversation/data`,
             {
                 params: {conversation_id},
                 withCredentials: true
@@ -56,7 +58,7 @@ export const dataOfConversation = async (conversation_id) => {
 export const getConversationWithBlockStatus = async (conversation_id) => {
     try {
         const response = await axios.get(
-            "http://localhost:5000/api/conversation/block-status",
+            `${API_URL}/api/conversation/block-status`,
             {
                 params: { conversation_id },
                 withCredentials: true
@@ -74,7 +76,7 @@ export const conversationStorage = async (conversation_id) => {
     try {
 
         const response = await axios.get(
-            "http://localhost:5000/api/conversation/storage",
+            `${API_URL}/api/conversation/storage`,
             {
                 params: {conversation_id},
                 withCredentials: true
@@ -92,7 +94,7 @@ export const memberOfConversation = async (conversation_id) => {
     try {
 
         const response = await axios.get(
-            "http://localhost:5000/api/conversation/member",
+            `${API_URL}/api/conversation/member`,
             {
                 params: {conversation_id},
                 withCredentials: true
@@ -110,7 +112,7 @@ export const addMember = async (data) => {
     try {
 
         const response = await axios.post(
-            "http://localhost:5000/api/conversation/member",
+            `${API_URL}/api/conversation/member`,
             {
                 conversation_id: data.conversation_id,
                 admin_id: data.admin_id,
@@ -129,7 +131,7 @@ export const deleteMember = async (data) => {
     try {
 
         const response = await axios.delete(
-            "http://localhost:5000/api/conversation/member",
+            `${API_URL}/api/conversation/member`,
             {
                 data: {
                     conversation_id: data.conversation_id,
@@ -150,7 +152,7 @@ export const changeRoleAdmin = async (data) => {
     try {
 
         const response = await axios.post(
-            "http://localhost:5000/api/conversation/change_role_admin",
+            `${API_URL}/api/conversation/change_role_admin`,
             {
                 conversation_id: data.conversation_id,
                 admin_id: data.admin_id,
@@ -169,7 +171,7 @@ export const adminInfo = async (conversation_id) => {
     try {
 
         const response = await axios.get(
-            "http://localhost:5000/api/conversation/admin",
+            `${API_URL}/api/conversation/admin`,
             {
                 params: {conversation_id},
                 withCredentials: true
@@ -187,7 +189,7 @@ export const deleteHistoryOfConversation = async (conversation_id) => {
     try {
 
         const response = await axios.delete(
-            "http://localhost:5000/api/conversation/history",
+            `${API_URL}/api/conversation/history`,
             {
                 data: {conversation_id},
             },
@@ -203,7 +205,7 @@ export const deleteHistoryOfConversation = async (conversation_id) => {
 export const searchMessage = async (data) => {
     try {
         const response = await axios.get(
-            "http://localhost:5000/api/message/search",
+            `${API_URL}/api/message/search`,
             {
                 params: data,
             },
@@ -220,7 +222,7 @@ export const deleteGroup = async (conversation_id) => {
     try {
 
         const response = await axios.delete(
-            "http://localhost:5000/api/conversation/group",
+            `${API_URL}/api/conversation/group`,
             {
                 data: {conversation_id},
             },
@@ -237,7 +239,7 @@ export const memberLeave = async (data) => {
     try {
 
         const response = await axios.post(
-            "http://localhost:5000/api/conversation/member_leave",
+            `${API_URL}/api/conversation/member_leave`,
             {
                 conversation_id: data.conversation_id,
                 member_id: data.member_id,

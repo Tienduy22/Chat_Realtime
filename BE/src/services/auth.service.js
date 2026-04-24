@@ -5,13 +5,15 @@ const {
     generateRefreshToken,
     verifyRefreshToken,
 } = require("../utils/jwt");
+const sendOTPEmail = require("../utils/mailer");
+const { saveOTP, verifyOTP, generateOTP } = require("../utils/otp");
 const { sequelize } = require("../models");
 
 const register = async (registerData) => {
     const transaction = await sequelize.transaction();
     try {
         const existingEmail = await userRepository.findByEmail(
-            registerData.email
+            registerData.email,
         );
         if (existingEmail) {
             throw {
@@ -20,13 +22,23 @@ const register = async (registerData) => {
             };
         }
 
+        const existingPhone = await userRepository.findByPhone(
+            registerData.phone,
+        );
+        if (existingPhone) {
+            throw {
+                statusCode: 409,
+                message: "Sô điện thoai đã được sử dụng",
+            };
+        }
+
         const existingUsername = await userRepository.findByName(
-            registerData.username
+            registerData.username,
         );
         if (existingUsername) {
             throw {
                 statusCode: 409,
-                message: "Username đã được sử dụng",
+                message: "Tên đăng nhâp đã được sử dụng",
             };
         }
 
@@ -40,7 +52,7 @@ const register = async (registerData) => {
                 phone: registerData.phone,
                 status: "offline",
             },
-            transaction
+            transaction,
         );
 
         const access_token = generateAccessToken({
@@ -114,6 +126,7 @@ const login = async (loginData) => {
             user_id: user.user_id,
             username: user.username,
             email: user.email,
+            phone: user.phone,
             full_name: user.full_name,
             avatar_url: user.avatar_url,
             status: "online",
@@ -200,10 +213,65 @@ const logout = async (user_id) => {
     }
 };
 
+const sendOTP = async (email) => {
+    const otp = generateOTP();
+
+    const user = await userRepository.findByEmail(email);
+    if (!user) {
+        throw {
+            statusCode: 409,
+            message: "Không có tài khoản nào trùng với email này",
+        };
+    }
+
+    saveOTP(email, otp);
+
+    await sendOTPEmail(email, otp);
+
+    return {
+        message: "OTP đã được gửi tới email",
+    };
+};
+
+const confirmOTP = async (email, otp) => {
+    const valid = verifyOTP(email, otp);
+
+    if (!valid) {
+        throw {
+            statusCode: 400,
+            message: "OTP không hợp lệ hoặc đã hết hạn",
+        };
+    }
+
+    return {
+        message: "Xác thực OTP thành công",
+    };
+};
+
+const newPassword = async (email, password) => {
+    try {
+        console.log(email);
+        const user = await userRepository.findByEmail(email);
+        if (!user) {
+            throw {
+                statusCode: 401,
+                message: "User không tồn tại",
+            };
+        }
+        const passwordHash = await bcrypt.hash(password, 12);
+        await userRepository.newPassword(email, passwordHash);
+    } catch (error) {
+        throw error;
+    }
+};
+
 module.exports = {
     register,
     login,
     refreshToken,
     profile,
     logout,
+    sendOTP,
+    confirmOTP,
+    newPassword,
 };

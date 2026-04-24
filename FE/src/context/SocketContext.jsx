@@ -5,26 +5,20 @@ import { io } from "socket.io-client";
 
 const SocketContext = createContext(null);
 
-// ✅ Socket instance ở NGOÀI component - không bị ảnh hưởng bởi React lifecycle
 let socketInstance = null;
 let currentUserId = null;
 
 const createSocketConnection = (userId) => {
     if (socketInstance && currentUserId === userId) {
-        console.log("✅ Reusing existing socket for user:", userId);
         return socketInstance;
     }
 
-    // Disconnect socket cũ nếu có và user khác
     if (socketInstance && currentUserId !== userId) {
-        console.log("🔄 User changed, recreating socket");
         socketInstance.disconnect();
         socketInstance = null;
     }
 
-    console.log("🆕 Creating NEW socket for user:", userId);
     currentUserId = userId;
-
     socketInstance = io(import.meta.env.VITE_SOCKET_URL, {
         transports: ["websocket"],
         withCredentials: true,
@@ -41,20 +35,22 @@ export const useSocket = () => {
     if (!context) {
         throw new Error("useSocket must be used within SocketProvider");
     }
-    return context.socket;
+    return context;
 };
 
 export const SocketProvider = () => {
     const [socket, setSocket] = useState(null);
     const [isConnected, setIsConnected] = useState(false);
-    
+
+    // ✅ Online state quản lý tập trung ở đây
+    const [onlineUsers, setOnlineUsers] = useState(new Set());
+    const [lastSeen, setLastSeen] = useState(new Map());
+
     const user_id = useSelector((state) => state.user?.user_id);
 
     useEffect(() => {
         if (!user_id) {
-            console.log("⏭️ No user_id");
             if (socketInstance) {
-                console.log("🚪 Disconnecting socket (user logged out)");
                 socketInstance.disconnect();
                 socketInstance = null;
                 currentUserId = null;
@@ -64,22 +60,52 @@ export const SocketProvider = () => {
             return;
         }
 
-        // ✅ Tạo hoặc reuse socket
         const sock = createSocketConnection(user_id);
 
-        // ✅ Remove old listeners trước khi add mới (tránh duplicate)
+        // ✅ Đăng ký online listeners TRƯỚC - không bị miss event
+        const handleInitialOnline = (users) => {
+            setOnlineUsers(new Set(users.map((u) => u.user_id)));
+            setLastSeen(new Map(users.map((u) => [u.user_id, u.last_seen])));
+        };
+        const handleUserOnline = (data) => {
+            setOnlineUsers((prev) => new Set(prev).add(data.user_id));
+            setLastSeen((prev) => new Map(prev).set(data.user_id, Date.now()));
+        };
+        const handleUserOffline = (data) => {
+            setOnlineUsers((prev) => {
+                const next = new Set(prev);
+                next.delete(data.user_id);
+                return next;
+            });
+            setLastSeen((prev) => new Map(prev).set(data.user_id, Date.now()));
+        };
+        const handleUserActivity = (data) => {
+            setOnlineUsers((prev) => new Set(prev).add(data.user_id));
+            setLastSeen((prev) => new Map(prev).set(data.user_id, Date.now()));
+        };
+
+        sock.off("initial_online_users");
+        sock.off("user_online");
+        sock.off("user_offline");
+        sock.off("user_activity");
         sock.off("connect");
         sock.off("disconnect");
         sock.off("connect_error");
 
-        // ✅ Add event listeners
+        sock.on("initial_online_users", handleInitialOnline);
+        sock.on("user_online", handleUserOnline);
+        sock.on("user_offline", handleUserOffline);
+        sock.on("user_activity", handleUserActivity);
+
         sock.on("connect", () => {
             console.log("✅ Socket connected:", sock.id);
             setIsConnected(true);
+            // ✅ Emit sau khi đã đăng ký listener rồi → không bao giờ miss
+            sock.emit("get_online_users");
         });
 
         sock.on("disconnect", (reason) => {
-            console.log("❌ Socket disconnected. Reason:", reason);
+            console.log("❌ Socket disconnected:", reason);
             setIsConnected(false);
         });
 
@@ -88,19 +114,26 @@ export const SocketProvider = () => {
             setIsConnected(false);
         });
 
-        // ✅ Update state để trigger re-render
+        // ✅ Nếu socket đã connected sẵn (reuse), emit luôn
+        if (sock.connected) {
+            sock.emit("get_online_users");
+        }
+
         setSocket(sock);
         setIsConnected(sock.connected);
 
-        // ✅ Cleanup: CHỈ remove listeners, KHÔNG disconnect socket
         return () => {
-            console.log("🧹 Cleanup: Removing event listeners (NOT disconnecting)");
-            // Không disconnect, chỉ cleanup listeners
+            sock.off("initial_online_users", handleInitialOnline);
+            sock.off("user_online", handleUserOnline);
+            sock.off("user_offline", handleUserOffline);
+            sock.off("user_activity", handleUserActivity);
         };
     }, [user_id]);
 
     return (
-        <SocketContext.Provider value={{ socket, isConnected }}>
+        <SocketContext.Provider
+            value={{ socket, isConnected, onlineUsers, lastSeen }}
+        >
             <Outlet />
         </SocketContext.Provider>
     );

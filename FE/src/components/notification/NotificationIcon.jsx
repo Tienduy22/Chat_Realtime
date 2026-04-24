@@ -28,7 +28,7 @@ const NotificationIcon = () => {
                 )}
 
                 <div className="absolute left-14 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
-                    Notifications
+                    Thông báo
                 </div>
             </button>
 

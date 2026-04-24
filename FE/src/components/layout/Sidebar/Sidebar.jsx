@@ -1,5 +1,5 @@
 import React from "react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useLocation } from "react-router-dom";
 import { removeUser } from "../../../Redux/reducers/userReducer";
 import { listConversation } from "../../../services/conversation.service";
@@ -10,6 +10,7 @@ const Sidebar = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const dispatch = useDispatch();
+    const user = useSelector((state) => state.user);
     
     // Initialize notification socket listener
     useNotificationSocket();
@@ -41,9 +42,7 @@ const Sidebar = () => {
     };
 
     const handleLogout = () => {
-        if (confirm("Bạn có chắc chắn muốn đăng xuất?")) {
-            dispatch(removeUser());
-        }
+        dispatch(removeUser());
     };
 
     // xác định icon nào đang active
@@ -75,10 +74,8 @@ const Sidebar = () => {
                 >
                     <span className="material-icons">chat_bubble</span>
 
-                    <span className="absolute top-2 right-2 h-2.5 w-2.5 bg-red-500 rounded-full border-2 border-white dark:border-sidebar-dark"></span>
-
                     <div className="absolute left-14 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
-                        Messages
+                        Tin nhắn
                     </div>
                 </button>
 
@@ -96,7 +93,7 @@ const Sidebar = () => {
                     <span className="material-icons">people</span>
 
                     <div className="absolute left-14 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
-                        Peoples
+                        Liên lạc
                     </div>
                 </button>
 
@@ -116,7 +113,7 @@ const Sidebar = () => {
                     <img
                         alt="User Profile"
                         className="h-full w-full object-cover"
-                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuAr17tSemUyw6elNJg_pIYSJZN8rs5oibcsZWm6QgkKTpZ0bMKcDRSnCHJZxk5OsXUlw8xf_zss4gkoihXbaCvg2zJgdAaiRpDPnr00LqGbyQ025VjuRz22BIKEhvwIFf8isOHuDwnlURsJYFdlgdAS7DXqn15C56eDOe8nw2bJUH0FcyInS3xcm37cKJETXq72zjaL4bGiQbXMFr9x5yJvl0njByjTUXj3ov92v4aea1Io7BdpESEWkYQUp3pm0O3WSNl3co6y0kY"
+                        src={user.avatar_url || "https://www.pinterest.com/pin/267964246571684904/"}
                     />
                 </div>
 
@@ -129,7 +126,7 @@ const Sidebar = () => {
                     <span className="material-icons text-2xl">logout</span>
 
                     <div className="absolute left-14 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
-                        Log Out
+                        Đăng xuất
                     </div>
                 </button>
             </div>

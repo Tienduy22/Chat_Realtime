@@ -40,7 +40,6 @@ const login = async (req, res, next) => {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             sameSite: "strict",
-            maxAge: 60 * 60 * 1000, 
             path: "/",
         });
 
@@ -48,7 +47,6 @@ const login = async (req, res, next) => {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             sameSite: "strict",
-            maxAge: 7 * 24 * 60 * 60 * 1000, 
             path: "/", 
         });
 
@@ -104,10 +102,46 @@ const logout = async (req, res, next) => {
     }
 }
 
+const sendOTP = async (req, res, next) => {
+    try {
+        const result = await authService.sendOTP(req.body.email);
+        res.json(result);
+    } catch (error) {
+        next(error);
+    }
+};
+
+const confirmOTP = async (req, res, next) => {
+    try {
+        const result = await authService.confirmOTP(
+            req.body.email,
+            req.body.otp
+        );
+        res.json(result);
+    } catch (error) {
+        next(error);
+    }
+};
+
+const newPassword = async (req, res, next) => {
+    try {
+        const result = await authService.newPassword(
+            req.body.email,
+            req.body.password
+        );
+        res.json(result);
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     register,
     login,
     refreshToken,
     profile,
-    logout
+    logout,
+    sendOTP,
+    confirmOTP,
+    newPassword
 }

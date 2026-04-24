@@ -9,7 +9,7 @@ export const NotificationProvider = ({ children }) => {
     const [unreadCount, setUnreadCount] = useState(0);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
-    const socket = useSocket();
+    const {socket} = useSocket();
 
     // Thêm thông báo mới
     const addNotification = useCallback((notification) => {

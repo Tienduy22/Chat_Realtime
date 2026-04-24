@@ -14,6 +14,12 @@ router.post("/register", validate(registerSchema), authController.register);
 
 router.post("/login", validate(loginSchema), authController.login);
 
+router.post("/send_otp", authController.sendOTP);
+
+router.post("/verify_otp", authController.confirmOTP);
+
+router.post("/new_password", authController.newPassword);
+
 router.post(
     "/refresh_token",
     validate(refreshTokenSchema),

@@ -1,5 +1,7 @@
 import axios from "axios";
 
+const API_URL = import.meta.env.VITE_API_URL
+
 export const fullMessage = async ({
     conversation_id,
     limit = 20,
@@ -7,7 +9,7 @@ export const fullMessage = async ({
 }) => {
     try {
         const response = await axios.get(
-            `http://localhost:5000/api/conversation/${conversation_id}`,
+            `${API_URL}/api/conversation/${conversation_id}`,
             {
                 params: { limit, offset }, 
                 withCredentials: true,
@@ -23,7 +25,7 @@ export const fullMessage = async ({
 export const createMessage = async (formData) => {
     try {
         const response = await axios.post(
-            "http://localhost:5000/api/message/",
+            `${API_URL}/api/message/`,
             formData,
             {
                 headers: {
@@ -42,7 +44,7 @@ export const createMessage = async (formData) => {
 export const markAsRead = async (conversationId, lastUnreadId, currentUserId) => {
     try {
         const response = await axios.post(
-            "http://localhost:5000/api/message/seem_message",
+            `${API_URL}/api/message/seem_message`,
             { conversation_id: conversationId, message_ids: lastUnreadId, user_id: currentUserId },
             { withCredentials: true }
         );
@@ -57,7 +59,7 @@ export const markAsRead = async (conversationId, lastUnreadId, currentUserId) =>
 export const reactionMessage = async (conversation_id, user_id, message_id, emoji) => {
     try {
         const response = await axios.post(
-            "http://localhost:5000/api/message/reaction_message",
+            `${API_URL}/api/message/reaction_message`,
             { conversation_id, message_id, user_id, emoji },
             { withCredentials: true }
         );
@@ -71,7 +73,7 @@ export const reactionMessage = async (conversation_id, user_id, message_id, emoj
 export const editMessage = async (conversation_id, user_id, message_id, content) => {
     try {
         const response = await axios.post(
-            "http://localhost:5000/api/message/edit_message",
+            `${API_URL}/api/message/edit_message`,
             { conversation_id, message_id, user_id, content },
             { withCredentials: true }
         );

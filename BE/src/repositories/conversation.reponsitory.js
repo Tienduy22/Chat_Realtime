@@ -7,7 +7,7 @@ const {
     MessageAttachment,
     Contact,
 } = require("../models");
-const { Op } = require("sequelize");
+const { Op, Sequelize } = require("sequelize");
 
 const createNewConversation = async (userId, friendId) => {
     const transaction = await sequelize.transaction();
@@ -151,7 +151,7 @@ const findAllMemberOfGroup = async (conversation_id) => {
         const memberOfGroup = await ConversationParticipant.findAll({
             where: {
                 conversation_id: conversation_id,
-                is_active: true,  // 👈 Chỉ lấy active members
+                is_active: true, // 👈 Chỉ lấy active members
             },
         });
 
@@ -429,21 +429,24 @@ const conversationStorage = async (conversation_id) => {
 
 const memberOfConversation = async (conversation_id) => {
     try {
-        const data = await ConversationParticipant.findAll(
-            {
-                attributes: ["conversation_id", "participant_id", "user_id", "role"],
-                where: {
-                    conversation_id: conversation_id,
-                },
-                include: [
-                    {
-                        model: User,
-                        as: "user",
-                        attributes: ["user_id", "full_name", "avatar_url"],
-                    },
-                ],
+        const data = await ConversationParticipant.findAll({
+            attributes: [
+                "conversation_id",
+                "participant_id",
+                "user_id",
+                "role",
+            ],
+            where: {
+                conversation_id: conversation_id,
             },
-        );
+            include: [
+                {
+                    model: User,
+                    as: "user",
+                    attributes: ["user_id", "full_name", "avatar_url"],
+                },
+            ],
+        });
 
         return data;
     } catch (error) {
@@ -453,35 +456,31 @@ const memberOfConversation = async (conversation_id) => {
 
 const AdminInfo = async (conversation_id) => {
     try {
-        const data = await ConversationParticipant.findOne(
-            {
-                attributes: ["participant_id", "user_id", "role"],
-                where: {
-                    conversation_id: conversation_id,
-                    role: "admin",
-                },
-            }
-        );
+        const data = await ConversationParticipant.findOne({
+            attributes: ["participant_id", "user_id", "role"],
+            where: {
+                conversation_id: conversation_id,
+                role: "admin",
+            },
+        });
 
         return data;
     } catch (error) {
         throw error;
     }
-}
+};
 
 const deleteHistoryOfConversation = async (conversation_id) => {
     try {
-        return await Message.destroy(
-            {
-                where: {
-                    conversation_id: conversation_id,
-                },
-            }
-        );
+        return await Message.destroy({
+            where: {
+                conversation_id: conversation_id,
+            },
+        });
     } catch (error) {
         throw error;
     }
-}
+};
 
 const searchMessage = async (conversation_id, keyword) => {
     try {
@@ -490,17 +489,17 @@ const searchMessage = async (conversation_id, keyword) => {
                 conversation_id: conversation_id,
                 content: {
                     [Op.like]: `%${keyword}%`,
-                }
+                },
             },
             order: [["created_at", "DESC"]],
             limit: 20,
-        })
+        });
 
         return messages;
     } catch (error) {
-        throw error
+        throw error;
     }
-}
+};
 
 const deleteGroup = async (conversation_id, keyword) => {
     try {
@@ -508,25 +507,25 @@ const deleteGroup = async (conversation_id, keyword) => {
             where: {
                 conversation_id: conversation_id,
             },
-        })
+        });
 
         await ConversationParticipant.destroy({
             where: {
                 conversation_id: conversation_id,
             },
-        })
+        });
 
         await Conversation.destroy({
             where: {
                 conversation_id: conversation_id,
             },
-        })
+        });
 
         return { success: true };
     } catch (error) {
-        throw error
+        throw error;
     }
-}
+};
 
 // ✅ Get conversation with block status (for private conversations)
 const getConversationWithBlockStatus = async (conversation_id, user_id) => {
@@ -582,10 +581,10 @@ const getConversationWithBlockStatus = async (conversation_id, user_id) => {
 
         if (conversation.conversation_type === "private") {
             const BlockedUser = require("../models").BlockedUser;
-            
+
             // Get the other participant
             const otherParticipant = conversation.participants.find(
-                p => p.user_id !== user_id
+                (p) => p.user_id !== user_id,
             );
 
             if (otherParticipant) {
@@ -621,6 +620,35 @@ const getConversationWithBlockStatus = async (conversation_id, user_id) => {
     }
 };
 
+const findPrivateConversation = async (user_id1, user_id2) => {
+    // Lấy tất cả conversation_id mà user_id1 tham gia
+    const user1Participants = await ConversationParticipant.findAll({
+        where: { user_id: user_id1, is_active: true },
+        attributes: ["conversation_id"],
+        raw: true,
+    });
+
+    const conversationIds = user1Participants.map((p) => p.conversation_id);
+
+    // Tìm conversation mà user_id2 cũng có mặt, trong danh sách trên
+    const participant = await ConversationParticipant.findOne({
+        where: {
+            user_id: user_id2,
+            is_active: true,
+            conversation_id: { [Op.in]: conversationIds },
+        },
+        include: [
+            {
+                model: Conversation,
+                as: "conversation",
+                where: { conversation_type: "private" },
+                required: true,
+            },
+        ],
+    });
+
+    return participant?.conversation ?? null;
+};
 module.exports = {
     createNewConversation,
     createNewGroupConversation,
@@ -643,4 +671,5 @@ module.exports = {
     searchMessage,
     deleteGroup,
     getConversationWithBlockStatus,
+    findPrivateConversation,
 };

@@ -13,7 +13,7 @@ export default function FriendRequestsReceived() {
     const [sentRequests, setSentRequests] = useState([]);
     const [invitations, setInvitations] = useState([]);
     const [refresh, setRefresh] = useState(false);
-    const socket = useSocket();
+    const {socket} = useSocket();
 
     const user = useSelector((state) => state.user);
 

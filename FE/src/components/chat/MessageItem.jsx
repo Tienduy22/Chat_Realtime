@@ -17,7 +17,7 @@ const MessageItem = ({
     showAvatar,
     formatMessageTime,
 }) => {
-    const socket = useSocket();
+    const {socket} = useSocket();
 
     const [isHovered, setIsHovered] = useState(false);
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);

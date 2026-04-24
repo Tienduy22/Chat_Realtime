@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "babel-node server.js",
+    "build": "npm run build-src && cp server.js build/server.js",
+    "build-src": "babel src -d build --copy-files",
     "dev": "cross-env NODE_ENV=development nodemon --inspect --watch src --exec babel-node server.js",
     "db:sync": "node scripts/syncDatabase.js",
     "db:seed": "node scripts/seedData.js",
@@ -33,11 +35,13 @@
     "morgan": "^1.10.1",
     "multer": "^2.0.2",
     "mysql2": "^3.15.3",
+    "nodemailer": "^8.0.2",
     "sequelize": "^6.37.7",
     "socket.io": "^4.8.1",
     "uuid": "^13.0.0"
   },
   "devDependencies": {
+    "@babel/cli": "^7.28.6",
     "@babel/core": "^7.28.5",
     "@babel/node": "^7.28.0",
     "@babel/preset-env": "^7.28.5",
